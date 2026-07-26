@@ -2,14 +2,14 @@
 
 namespace App\Domain\Relationship;
 
-use App\Models\Match;
+use App\Models\UserMatch;
 use App\Models\Friendship;
 
 readonly class RelationshipStatus
 {
     public function __construct(
         public RelationshipLevel $level,
-        public ?Match $match = null,
+        public ?UserMatch $matchModel = null,
         public ?Friendship $friendship = null,
         public bool $hasMutualToke = false,
     ) {}
@@ -44,7 +44,7 @@ readonly class RelationshipStatus
         return new self(RelationshipLevel::MUTUAL_TOKE, hasMutualToke: true);
     }
     
-    public static function fromMatch(Match $matchModel): self
+    public static function fromMatch(UserMatch $matchModel): self
     {
         return new self(RelationshipLevel::MATCH, matchModel: $matchModel);
     }

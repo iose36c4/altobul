@@ -6,6 +6,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use App\Casts\PointCast;
 
 class Profile extends Model
 {
@@ -15,6 +16,7 @@ class Profile extends Model
     protected $keyType = 'string';
     
     protected $fillable = [
+        'user_id',
         'title',
         'title_visibility',
         'title_requires_verified',
@@ -35,7 +37,7 @@ class Profile extends Model
     protected $casts = [
         'birth_date' => 'date',
         'location_precision_meters' => 'integer',
-        'location' => 'point',
+        'location' => PointCast::class,
         'discoverable' => 'boolean',
         'title_visibility' => 'string',
         'title_requires_verified' => 'boolean',

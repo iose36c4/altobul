@@ -32,4 +32,9 @@ class PostAttachment extends Model
     {
         return $this->belongsTo(Post::class, 'post_id', 'id');
     }
+
+    public function getUrl(): string
+    {
+        return config('filesystems.disks.s3.url', 'https://s3.amazonaws.com') . '/' . config('filesystems.disks.s3.bucket') . '/' . $this->storage_key;
+    }
 }

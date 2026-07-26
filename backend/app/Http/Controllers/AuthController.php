@@ -1,0 +1,220 @@
+<?php
+
+namespace App\Http\Controllers;
+
+use App\Http\Requests\Auth\ForgotPasswordRequest;
+use App\Http\Requests\Auth\LoginRequest;
+use App\Http\Requests\Auth\RegisterRequest;
+use App\Http\Requests\Auth\ResetPasswordRequest;
+use App\Http\Resources\UserResource;
+use App\Models\VerificationRequest;
+use App\Services\Auth\AuthService;
+use App\Services\Authorization\AuthorizationService;
+use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
+
+class AuthController extends Controller
+{
+    public function __construct(
+        private AuthService $authService,
+        private AuthorizationService $authzService,
+    ) {}
+
+    public function register(RegisterRequest $request): JsonResponse
+    {
+        $user = $this->authService->register($request->validated());
+
+        return response()->json([
+            'user' => new UserResource($user),
+            'message' => 'Registration successful. Please verify your email.',
+        ], 201);
+    }
+
+    public function login(LoginRequest $request): JsonResponse
+    {
+        $data = $this->authService->login($request->validated());
+
+        return response()->json([
+            'user' => new UserResource($data['user']),
+            'token' => $data['token'],
+            'expires_at' => $data['expires_at'],
+        ]);
+    }
+
+    public function logout(Request $request): JsonResponse
+    {
+        $this->authService->logout($request->user());
+
+        return response()->json(['message' => 'Logged out successfully']);
+    }
+
+    public function refresh(Request $request): JsonResponse
+    {
+        $data = $this->authService->refresh($request->user());
+
+        return response()->json([
+            'user' => new UserResource($data['user']),
+            'token' => $data['token'],
+            'expires_at' => $data['expires_at'],
+        ]);
+    }
+
+    public function forgotPassword(ForgotPasswordRequest $request): JsonResponse
+    {
+        $status = $this->authService->sendPasswordResetLink($request->validated()['email']);
+
+        return response()->json(['message' => __($status)]);
+    }
+
+    public function resetPassword(ResetPasswordRequest $request): JsonResponse
+    {
+        $this->authService->resetPassword($request->validated());
+
+        return response()->json(['message' => 'Password reset successfully']);
+    }
+
+    public function verifyEmail(Request $request): JsonResponse
+    {
+        $user = $request->user();
+
+        if ($user->hasVerifiedEmail()) {
+            return response()->json(['message' => 'Email already verified']);
+        }
+
+        $user->markEmailAsVerified();
+
+        return response()->json(['message' => 'Email verified successfully']);
+    }
+
+    public function resendVerificationEmail(Request $request): JsonResponse
+    {
+        $user = $request->user();
+
+        if ($user->hasVerifiedEmail()) {
+            return response()->json(['message' => 'Email already verified']);
+        }
+
+        $user->sendEmailVerificationNotification();
+
+        return response()->json(['message' => 'Verification email sent']);
+    }
+
+    // Verification request endpoints
+    public function requestVerification(Request $request): JsonResponse
+    {
+        $user = $request->user();
+        $this->authzService->canRequestVerification($user)->throwIfDenied();
+
+        $data = $request->validate([
+            'verification_method' => ['required', 'string', 'in:document,video,manual'],
+            'external_reference' => ['nullable', 'string', 'max:255'],
+        ]);
+
+        $verification = $this->authService->requestVerification($user, $data);
+
+        return response()->json([
+            'verification' => [
+                'id' => $verification->id,
+                'status' => $verification->status,
+                'verification_method' => $verification->verification_method,
+                'submitted_at' => $verification->submitted_at?->toISOString(),
+            ],
+        ], 201);
+    }
+
+    public function getVerificationStatus(Request $request): JsonResponse
+    {
+        $user = $request->user();
+        $verification = VerificationRequest::where('user_id', $user->id)
+            ->latest('submitted_at')
+            ->first();
+
+        return response()->json([
+            'verification' => $verification ? [
+                'id' => $verification->id,
+                'status' => $verification->status,
+                'verification_method' => $verification->verification_method,
+                'external_reference' => $verification->external_reference,
+                'submitted_at' => $verification->submitted_at?->toISOString(),
+                'reviewed_at' => $verification->reviewed_at?->toISOString(),
+                'rejection_reason' => $verification->rejection_reason,
+                'reviewed_by' => $verification->reviewedBy ? [
+                    'id' => $verification->reviewedBy->id,
+                    'email' => $verification->reviewedBy->email,
+                ] : null,
+            ] : null,
+        ]);
+    }
+
+    public function me(Request $request): JsonResponse
+    {
+        return response()->json([
+            'user' => new UserResource($request->user()->load('profile')),
+        ]);
+    }
+
+    // Admin endpoints
+    public function listVerificationRequests(Request $request): JsonResponse
+    {
+        $this->authzService->canAdmin($request->user())->throwIfDenied();
+
+        $requests = VerificationRequest::with('user.profile', 'reviewedBy')
+            ->latest('submitted_at')
+            ->paginate($request->input('per_page', 20));
+
+        return response()->json([
+            'requests' => $requests->map(fn($r) => [
+                'id' => $r->id,
+                'user' => [
+                    'id' => $r->user->id,
+                    'email' => $r->user->email,
+                    'profile' => $r->user->profile ? [
+                        'title' => $r->user->profile->title,
+                        'description' => $r->user->profile->description,
+                    ] : null,
+                ],
+                'status' => $r->status,
+                'verification_method' => $r->verification_method,
+                'external_reference' => $r->external_reference,
+                'submitted_at' => $r->submitted_at?->toISOString(),
+                'reviewed_at' => $r->reviewed_at?->toISOString(),
+                'rejection_reason' => $r->rejection_reason,
+                'reviewed_by' => $r->reviewedBy ? [
+                    'id' => $r->reviewedBy->id,
+                    'email' => $r->reviewedBy->email,
+                ] : null,
+            ]),
+            'pagination' => [
+                'current_page' => $requests->currentPage(),
+                'last_page' => $requests->lastPage(),
+                'per_page' => $requests->perPage(),
+                'total' => $requests->total(),
+            ],
+        ]);
+    }
+
+    public function reviewVerificationRequest(Request $request, VerificationRequest $verificationRequest): JsonResponse
+    {
+        $this->authzService->canAdmin($request->user())->throwIfDenied();
+
+        $data = $request->validate([
+            'action' => ['required', 'string', 'in:approve,reject'],
+            'rejection_reason' => ['nullable', 'string', 'required_if:action,reject', 'max:500'],
+        ]);
+
+        $verification = $this->authService->reviewVerification(
+            $verificationRequest,
+            $data['action'],
+            $data['rejection_reason'] ?? null
+        );
+
+        return response()->json([
+            'verification' => [
+                'id' => $verification->id,
+                'status' => $verification->status,
+                'reviewed_at' => $verification->reviewed_at?->toISOString(),
+                'rejection_reason' => $verification->rejection_reason,
+            ],
+        ]);
+    }
+}

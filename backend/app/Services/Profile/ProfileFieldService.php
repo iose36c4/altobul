@@ -4,33 +4,45 @@ namespace App\Services\Profile;
 
 use App\Models\Profile;
 use App\Models\ProfileFieldDefinition;
-use App\Models\ProfileFieldOption;
 use App\Models\ProfileFieldValue;
+use App\Models\ProfileFieldOption;
 use App\Models\ProfileFieldValueOption;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
-use Illuminate\Validation\Rule;
 
 class ProfileFieldService
 {
-    public function getFieldBySlug(string $slug): ?ProfileFieldDefinition
+    public function setValue(Profile $profile, ProfileFieldDefinition $field, mixed $input): ProfileFieldValue
     {
-        return ProfileFieldDefinition::where('slug', $slug)->first();
-    }
-    
-    public function getActiveFields(): \Illuminate\Database\Eloquent\Collection
-    {
-        return ProfileFieldDefinition::active()->orderBy('sort_order')->get();
-    }
-    
-    public function getFilterableFields(): \Illuminate\Database\Eloquent\Collection
-    {
-        return ProfileFieldDefinition::active()->filterable()->get();
+        $validated = $this->validateAndNormalize($input, $field);
+        
+        return DB::transaction(function() use ($profile, $field, $validated, $input) {
+            $value = ProfileFieldValue::updateOrCreate(
+                ['profile_id' => $profile->user_id, 'field_id' => $field->id],
+                array_merge($validated, ['updated_at' => now()])
+            );
+            
+            // Handle options for SELECT, MULTISELECT, RADIO
+            if (in_array($field->type, ['SELECT', 'MULTISELECT', 'RADIO']) && $input) {
+                $optionIds = $this->getOptionIdsForInput($field, $input);
+                
+                ProfileFieldValueOption::where('field_value_id', $value->id)->delete();
+                
+                foreach ($optionIds as $optionId) {
+                    ProfileFieldValueOption::create([
+                        'field_value_id' => $value->id,
+                        'option_id' => $optionId,
+                    ]);
+                }
+            }
+            
+            return $value->fresh(['field', 'selectedOptions']);
+        });
     }
     
     public function validateAndNormalize(mixed $input, ProfileFieldDefinition $field): array
     {
-        $baseRules = $this->getBaseRulesForType($field->type);
+        $baseRules = $this->getBaseRulesForType($field->type, $field->id);
         $customRules = $field->validation_rules ?? [];
         
         $validator = Validator::make(['value' => $input], array_merge($baseRules, $customRules));
@@ -39,7 +51,7 @@ class ProfileFieldService
         return $this->normalizeValue($input, $field);
     }
     
-    private function getBaseRulesForType(string $type): array
+    private function getBaseRulesForType(string $type, string $fieldId): array
     {
         return match($type) {
             'TEXT' => ['string', 'max:500'],
@@ -49,20 +61,16 @@ class ProfileFieldService
             'BOOLEAN' => ['boolean'],
             'SELECT', 'RADIO' => [
                 'string',
-                Rule::exists('profile_field_options', 'value')->where('field_id', $this->getFieldIdForValidation())
+                \Illuminate\Validation\Rule::exists('profile_field_options', 'value')
+                    ->where('field_id', $fieldId)
             ],
             'MULTISELECT' => [
                 'array', 'min:1',
-                Rule::exists('profile_field_options', 'value')->where('field_id', $this->getFieldIdForValidation())
+                \Illuminate\Validation\Rule::exists('profile_field_options', 'value')
+                    ->where('field_id', $fieldId)
             ],
             default => [],
         };
-    }
-    
-    private function getFieldIdForValidation(): string
-    {
-        // This will be set dynamically
-        return '';
     }
     
     private function normalizeValue(mixed $input, ProfileFieldDefinition $field): array
@@ -101,33 +109,6 @@ class ProfileFieldService
         }
         
         return $data;
-    }
-    
-    public function setValue(Profile $profile, ProfileFieldDefinition $field, mixed $input): ProfileFieldValue
-    {
-        $normalized = $this->validateAndNormalize($input, $field);
-        
-        return DB::transaction(function() use ($profile, $field, $normalized, $input) {
-            $value = ProfileFieldValue::updateOrCreate(
-                ['profile_id' => $profile->user_id, 'field_id' => $field->id],
-                array_merge($normalized, ['updated_at' => now()])
-            );
-            
-            // Handle MULTISELECT/SELECT options
-            if (in_array($field->type, ['SELECT', 'RADIO', 'MULTISELECT']) && $input) {
-                $optionIds = $this->getOptionIdsForInput($field, $input);
-                ProfileFieldValueOption::where('field_value_id', $value->id)->delete();
-                
-                foreach ($optionIds as $optionId) {
-                    ProfileFieldValueOption::create([
-                        'field_value_id' => $value->id,
-                        'option_id' => $optionId,
-                    ]);
-                }
-            }
-            
-            return $value->fresh();
-        });
     }
     
     private function getOptionIdsForInput(ProfileFieldDefinition $field, mixed $input): array

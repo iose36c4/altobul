@@ -63,4 +63,9 @@ class Photo extends Model
     {
         return $this->status === 'ACTIVE' && $this->deleted_at === null;
     }
+
+    public function getUrl(): string
+    {
+        return config('filesystems.disks.s3.url', 'https://s3.amazonaws.com') . '/' . config('filesystems.disks.s3.bucket') . '/' . $this->storage_key;
+    }
 }

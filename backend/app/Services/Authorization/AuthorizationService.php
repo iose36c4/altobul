@@ -8,7 +8,7 @@ use App\Domain\Authorization\AuthorizationResult;
 use App\Domain\Authorization\VisibilityLevel;
 use App\Domain\Relationship\RelationshipStatus;
 use App\Models\Block;
-use App\Models\Match;
+use App\Models\UserMatch;
 use App\Models\Friendship;
 use App\Models\Toke;
 use App\Models\Conversation;
@@ -69,10 +69,15 @@ class AuthorizationService implements AuthorizationServiceInterface
 
     public function canViewProfile(User $viewer, User $owner): AuthorizationResult
     {
+        $visibility = $owner->profile?->profile_visibility 
+            ? VisibilityLevel::tryFrom($owner->profile->profile_visibility) 
+            : VisibilityLevel::PUBLIC;
+        $requiresVerified = $owner->profile?->profile_requires_verified ?? false;
+        
         return $this->evaluateResourceAccess(
             $viewer, $owner,
-            $owner->profile?->profile_visibility ?? VisibilityLevel::PUBLIC,
-            $owner->profile?->profile_requires_verified ?? false,
+            $visibility,
+            $requiresVerified,
             'profile', $owner->id
         );
     }
@@ -173,7 +178,7 @@ class AuthorizationService implements AuthorizationServiceInterface
             return AuthorizationResult::denied(AuthorizationReason::BLOCKED);
         }
         
-        $match = Match::between($initiator, $target)->active()->first();
+        $match = UserMatch::between($initiator, $target)->active()->first();
         if (!$match) {
             return AuthorizationResult::denied(AuthorizationReason::MATCH_EXPIRED);
         }
@@ -379,9 +384,9 @@ class AuthorizationService implements AuthorizationServiceInterface
         }
         
         // 2. Check Match
-        $match = Match::between($a, $b)->active()->first();
+        $match = UserMatch::between($a, $b)->active()->first();
         if ($match) {
-            return RelationshipStatus::match($match);
+            return RelationshipStatus::fromMatch($match);
         }
         
         // 3. Check Mutual Toke
@@ -415,6 +420,18 @@ class AuthorizationService implements AuthorizationServiceInterface
         string $resourceType,
         string $resourceId
     ): AuthorizationResult {
+        // 0. SELF-VIEW: users can always view their own resources
+        if ($viewer->id === $owner->id) {
+            // Still check expiration for time-limited resources
+            if (in_array($resourceType, ['post', 'toke', 'match'])) {
+                $model = $this->getResource($resourceType, $resourceId);
+                if ($model && $model->isExpired()) {
+                    return AuthorizationResult::denied(AuthorizationReason::RESOURCE_EXPIRED);
+                }
+            }
+            return AuthorizationResult::allowed();
+        }
+        
         // 1. BLOCK - absolute override
         if ($this->isBlocked($viewer, $owner) || $this->isBlocked($owner, $viewer)) {
             return AuthorizationResult::denied(AuthorizationReason::BLOCKED);
@@ -462,7 +479,7 @@ class AuthorizationService implements AuthorizationServiceInterface
             'post' => Post::find($id),
             'profile_field' => ProfileFieldValue::find($id),
             'toke' => Toke::find($id),
-            'match' => Match::find($id),
+            'match' => UserMatch::find($id),
             default => null,
         };
     }

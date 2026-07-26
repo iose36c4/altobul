@@ -9,6 +9,16 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Laravel\Sanctum\HasApiTokens;
+use App\Models\Match as MatchModel;
+use App\Models\Friendship;
+use App\Models\Block;
+use App\Models\Conversation;
+use App\Models\Message;
+use App\Models\VerificationRequest;
+use App\Models\DiscoveryPreference;
+use App\Models\ProfileFieldValueAccess;
+use App\Models\PhotoAccess;
+use App\Models\PostAccess;
 
 #[Fillable(['email', 'password_hash', 'role', 'status', 'verification_status', 'verified_at', 'email_verified_at', 'last_seen_at'])]
 #[Hidden(['password_hash', 'remember_token'])]
@@ -61,12 +71,12 @@ class User extends Authenticatable
     
     public function matchesAsA()
     {
-        return $this->hasMany(Match::class, 'user_a_id', 'id');
+        return $this->hasMany(MatchModel::class, 'user_a_id', 'id');
     }
     
     public function matchesAsB()
     {
-        return $this->hasMany(Match::class, 'user_b_id', 'id');
+        return $this->hasMany(MatchModel::class, 'user_b_id', 'id');
     }
     
     public function friendshipsAsA()

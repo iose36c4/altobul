@@ -6,7 +6,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use App\Traits\HasExpiration;
 
-class Match extends Model
+class UserMatch extends Model
 {
     use HasExpiration;
     
@@ -54,7 +54,9 @@ class Match extends Model
     
     public function scopeBetween($query, $userA, $userB)
     {
-        $ids = [$userA, $userB];
+        $idA = $userA instanceof User ? $userA->id : $userA;
+        $idB = $userB instanceof User ? $userB->id : $userB;
+        $ids = [$idA, $idB];
         sort($ids);
         return $query->where('user_a_id', $ids[0])
                      ->where('user_b_id', $ids[1]);
