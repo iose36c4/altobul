@@ -9,20 +9,20 @@ return new class extends Migration
 {
     public function up(): void
     {
-        // Create ENUM types
-        DB::statement("CREATE TYPE user_role AS ENUM ('user', 'admin')");
-        DB::statement("CREATE TYPE user_status AS ENUM ('active', 'suspended', 'banned', 'deleted')");
-        DB::statement("CREATE TYPE verification_status AS ENUM ('not_verified', 'pending', 'verified', 'rejected')");
-        DB::statement("CREATE TYPE visibility_level AS ENUM ('PUBLIC', 'MATCH', 'FRIENDS', 'PRIVATE')");
-        DB::statement("CREATE TYPE toke_status AS ENUM ('ACTIVE', 'EXPIRED', 'CONSUMED', 'CANCELLED')");
-        DB::statement("CREATE TYPE match_status AS ENUM ('ACTIVE', 'EXPIRED', 'ENDED_BY_BLOCK')");
-        DB::statement("CREATE TYPE friendship_status AS ENUM ('ACTIVE', 'ENDED')");
-        DB::statement("CREATE TYPE friendship_request_status AS ENUM ('PENDING', 'ACCEPTED', 'REJECTED', 'EXPIRED')");
-        DB::statement("CREATE TYPE conversation_status AS ENUM ('ACTIVE', 'BLOCKED', 'ENDED')");
-        DB::statement("CREATE TYPE post_status AS ENUM ('ACTIVE', 'EXPIRED', 'DELETED')");
-        DB::statement("CREATE TYPE photo_status AS ENUM ('ACTIVE', 'PROCESSING', 'DELETED')");
-        DB::statement("CREATE TYPE field_type AS ENUM ('TEXT', 'TEXTAREA', 'NUMBER', 'DATE', 'BOOLEAN', 'SELECT', 'MULTISELECT', 'RADIO')");
-        DB::statement("CREATE TYPE discovery_operator AS ENUM ('eq', 'neq', 'gt', 'gte', 'lt', 'lte', 'in', 'nin', 'between', 'is_null', 'is_not_null')");
+        // Create ENUM types (using DO blocks to handle IF NOT EXISTS in PostgreSQL)
+        DB::statement("DO \$\$ BEGIN CREATE TYPE user_role AS ENUM ('user', 'admin'); EXCEPTION WHEN duplicate_object THEN NULL; END \$\$;");
+        DB::statement("DO \$\$ BEGIN CREATE TYPE user_status AS ENUM ('active', 'suspended', 'banned', 'deleted'); EXCEPTION WHEN duplicate_object THEN NULL; END \$\$;");
+        DB::statement("DO \$\$ BEGIN CREATE TYPE verification_status AS ENUM ('not_verified', 'pending', 'verified', 'rejected'); EXCEPTION WHEN duplicate_object THEN NULL; END \$\$;");
+        DB::statement("DO \$\$ BEGIN CREATE TYPE visibility_level AS ENUM ('PUBLIC', 'MATCH', 'FRIENDS', 'PRIVATE'); EXCEPTION WHEN duplicate_object THEN NULL; END \$\$;");
+        DB::statement("DO \$\$ BEGIN CREATE TYPE toke_status AS ENUM ('ACTIVE', 'EXPIRED', 'CONSUMED', 'CANCELLED'); EXCEPTION WHEN duplicate_object THEN NULL; END \$\$;");
+        DB::statement("DO \$\$ BEGIN CREATE TYPE match_status AS ENUM ('ACTIVE', 'EXPIRED', 'ENDED_BY_BLOCK'); EXCEPTION WHEN duplicate_object THEN NULL; END \$\$;");
+        DB::statement("DO \$\$ BEGIN CREATE TYPE friendship_status AS ENUM ('ACTIVE', 'ENDED'); EXCEPTION WHEN duplicate_object THEN NULL; END \$\$;");
+        DB::statement("DO \$\$ BEGIN CREATE TYPE friendship_request_status AS ENUM ('PENDING', 'ACCEPTED', 'REJECTED', 'EXPIRED'); EXCEPTION WHEN duplicate_object THEN NULL; END \$\$;");
+        DB::statement("DO \$\$ BEGIN CREATE TYPE conversation_status AS ENUM ('ACTIVE', 'ENDED'); EXCEPTION WHEN duplicate_object THEN NULL; END \$\$;");
+        DB::statement("DO \$\$ BEGIN CREATE TYPE post_status AS ENUM ('ACTIVE', 'EXPIRED', 'DELETED'); EXCEPTION WHEN duplicate_object THEN NULL; END \$\$;");
+        DB::statement("DO \$\$ BEGIN CREATE TYPE photo_status AS ENUM ('ACTIVE', 'PROCESSING', 'DELETED'); EXCEPTION WHEN duplicate_object THEN NULL; END \$\$;");
+        DB::statement("DO \$\$ BEGIN CREATE TYPE field_type AS ENUM ('TEXT', 'TEXTAREA', 'NUMBER', 'DATE', 'BOOLEAN', 'SELECT', 'MULTISELECT', 'RADIO'); EXCEPTION WHEN duplicate_object THEN NULL; END \$\$;");
+        DB::statement("DO \$\$ BEGIN CREATE TYPE discovery_operator AS ENUM ('eq', 'neq', 'gt', 'gte', 'lt', 'lte', 'in', 'nin', 'between', 'is_null', 'is_not_null'); EXCEPTION WHEN duplicate_object THEN NULL; END \$\$;");
 
         // Enable PostGIS extension
         DB::statement('CREATE EXTENSION IF NOT EXISTS postgis');
@@ -51,18 +51,19 @@ return new class extends Migration
     public function down(): void
     {
         Schema::dropIfExists('users');
-        DB::statement('DROP TYPE IF EXISTS user_role');
-        DB::statement('DROP TYPE IF EXISTS user_status');
-        DB::statement('DROP TYPE IF EXISTS verification_status');
-        DB::statement('DROP TYPE IF EXISTS visibility_level');
-        DB::statement('DROP TYPE IF EXISTS toke_status');
-        DB::statement('DROP TYPE IF EXISTS match_status');
-        DB::statement('DROP TYPE IF EXISTS friendship_status');
-        DB::statement('DROP TYPE IF EXISTS friendship_request_status');
-        DB::statement('DROP TYPE IF EXISTS conversation_status');
-        DB::statement('DROP TYPE IF EXISTS post_status');
-        DB::statement('DROP TYPE IF EXISTS photo_status');
-        DB::statement('DROP TYPE IF EXISTS field_type');
-        DB::statement('DROP TYPE IF EXISTS discovery_operator');
+        // Use CASCADE to drop types that have dependencies
+        DB::statement('DROP TYPE IF EXISTS user_role CASCADE');
+        DB::statement('DROP TYPE IF EXISTS user_status CASCADE');
+        DB::statement('DROP TYPE IF EXISTS verification_status CASCADE');
+        DB::statement('DROP TYPE IF EXISTS visibility_level CASCADE');
+        DB::statement('DROP TYPE IF EXISTS toke_status CASCADE');
+        DB::statement('DROP TYPE IF EXISTS match_status CASCADE');
+        DB::statement('DROP TYPE IF EXISTS friendship_status CASCADE');
+        DB::statement('DROP TYPE IF EXISTS friendship_request_status CASCADE');
+        DB::statement('DROP TYPE IF EXISTS conversation_status CASCADE');
+        DB::statement('DROP TYPE IF EXISTS post_status CASCADE');
+        DB::statement('DROP TYPE IF EXISTS photo_status CASCADE');
+        DB::statement('DROP TYPE IF EXISTS field_type CASCADE');
+        DB::statement('DROP TYPE IF EXISTS discovery_operator CASCADE');
     }
 };

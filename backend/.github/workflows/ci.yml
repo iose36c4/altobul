@@ -1,0 +1,70 @@
+name: CI
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main, develop]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    
+    services:
+      postgres:
+        image: postgis/postgis:16-3.4
+        ports: ['5432:5432']
+        env:
+          POSTGRES_USER: test
+          POSTGRES_PASSWORD: test
+          POSTGRES_DB: altobul_test
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+      
+      redis:
+        image: redis:7-alpine
+        ports: ['6379:6379']
+        options: --entrypoint redis-server
+
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          extensions: pgsql, redis, gd, intl
+          coverage: xdebug
+          
+      - name: Cache Composer
+        uses: actions/cache@v4
+        with:
+          path: vendor
+          key: composer-${{ hashFiles('composer.lock') }}
+          
+      - name: Install Dependencies
+        run: composer install --prefer-dist --no-progress --no-interaction
+        
+      - name: Copy .env
+        run: |
+          cp .env.example .env
+          sed -i 's/DB_CONNECTION=sqlite/DB_CONNECTION=pgsql/' .env
+          sed -i 's/DB_DATABASE=.*/DB_DATABASE=altobul_test/' .env
+          sed -i 's/DB_USERNAME=.*/DB_USERNAME=test/' .env
+          sed -i 's/DB_PASSWORD=.*/DB_PASSWORD=test/' .env
+          sed -i 's/DB_HOST=.*/DB_HOST=127.0.0.1/' .env
+          
+      - name: Generate Key
+        run: php artisan key:generate
+        
+      - name: Run Migrations
+        run: php artisan migrate --force
+        
+      - name: Run Tests
+        run: php artisan test --parallel
+        
+      - name: Static Analysis
+        run: php artisan pint --test && phpstan analyse --level=5

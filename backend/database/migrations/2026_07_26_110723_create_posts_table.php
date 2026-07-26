@@ -13,6 +13,7 @@ return new class extends Migration
             $table->uuid('id')->primary();
             $table->foreignUuid('user_id')->constrained('users')->cascadeOnDelete();
             $table->text('content_md');
+            $table->text('content_html')->nullable(); // Cached sanitized HTML
             $table->enum('visibility', ['PUBLIC', 'MATCH', 'FRIENDS', 'PRIVATE'])->default('PUBLIC');
             $table->boolean('requires_verified')->default(false);
             $table->timestampTz('expires_at')->nullable(false);

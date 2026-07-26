@@ -2,31 +2,142 @@
 
 namespace App\Models;
 
-// use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Database\Factories\UserFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\Hidden;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
+use Laravel\Sanctum\HasApiTokens;
 
-#[Fillable(['name', 'email', 'password'])]
-#[Hidden(['password', 'remember_token'])]
+#[Fillable(['email', 'password_hash', 'role', 'status', 'verification_status', 'verified_at', 'email_verified_at', 'last_seen_at'])]
+#[Hidden(['password_hash', 'remember_token'])]
 class User extends Authenticatable
 {
-    /** @use HasFactory<UserFactory> */
-    use HasFactory, Notifiable;
+    use HasApiTokens, HasFactory, Notifiable;
 
-    /**
-     * Get the attributes that should be cast.
-     *
-     * @return array<string, string>
-     */
+    protected $table = 'users';
+    protected $primaryKey = 'id';
+    public $incrementing = false;
+    protected $keyType = 'string';
+    
     protected function casts(): array
     {
         return [
             'email_verified_at' => 'datetime',
-            'password' => 'hashed',
+            'verified_at' => 'datetime',
+            'last_seen_at' => 'datetime',
+            'created_at' => 'datetime',
+            'updated_at' => 'datetime',
+            'deleted_at' => 'datetime',
+            'password_hash' => 'hashed',
         ];
+    }
+
+    public function profile()
+    {
+        return $this->hasOne(Profile::class, 'user_id', 'id');
+    }
+    
+    public function photos()
+    {
+        return $this->hasMany(Photo::class, 'user_id', 'id');
+    }
+    
+    public function posts()
+    {
+        return $this->hasMany(Post::class, 'user_id', 'id');
+    }
+    
+    public function sentTokes()
+    {
+        return $this->hasMany(Toke::class, 'sender_id', 'id');
+    }
+    
+    public function receivedTokes()
+    {
+        return $this->hasMany(Toke::class, 'receiver_id', 'id');
+    }
+    
+    public function matchesAsA()
+    {
+        return $this->hasMany(Match::class, 'user_a_id', 'id');
+    }
+    
+    public function matchesAsB()
+    {
+        return $this->hasMany(Match::class, 'user_b_id', 'id');
+    }
+    
+    public function friendshipsAsA()
+    {
+        return $this->hasMany(Friendship::class, 'user_a_id', 'id');
+    }
+    
+    public function friendshipsAsB()
+    {
+        return $this->hasMany(Friendship::class, 'user_b_id', 'id');
+    }
+    
+    public function blocksAsBlocker()
+    {
+        return $this->hasMany(Block::class, 'blocker_id', 'id');
+    }
+    
+    public function blocksAsBlocked()
+    {
+        return $this->hasMany(Block::class, 'blocked_id', 'id');
+    }
+    
+    public function conversations()
+    {
+        return $this->hasMany(Conversation::class, 'user_a_id', 'id')
+            ->orWhere('user_b_id', $this->id);
+    }
+    
+    public function sentMessages()
+    {
+        return $this->hasMany(Message::class, 'sender_id', 'id');
+    }
+    
+    public function verificationRequests()
+    {
+        return $this->hasMany(VerificationRequest::class, 'user_id', 'id');
+    }
+    
+    public function discoveryPreferences()
+    {
+        return $this->hasMany(DiscoveryPreference::class, 'user_id', 'id');
+    }
+    
+    public function grantedFieldAccess()
+    {
+        return $this->hasMany(ProfileFieldValueAccess::class, 'grantee_id', 'id');
+    }
+    
+    public function grantedPhotoAccess()
+    {
+        return $this->hasMany(PhotoAccess::class, 'grantee_id', 'id');
+    }
+    
+    public function grantedPostAccess()
+    {
+        return $this->hasMany(PostAccess::class, 'grantee_id', 'id');
+    }
+    
+    public function isOnline(): bool
+    {
+        return $this->last_seen_at 
+            && $this->last_seen_at->diffInMinutes(now()) < (config('app.online_threshold_minutes', 2));
+    }
+    
+    public function isVerified(): bool
+    {
+        return $this->verification_status === 'verified';
+    }
+    
+    public function isAdmin(): bool
+    {
+        return $this->role === 'admin';
     }
 }

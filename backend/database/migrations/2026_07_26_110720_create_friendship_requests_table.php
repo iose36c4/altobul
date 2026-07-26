@@ -11,20 +11,24 @@ return new class extends Migration
     {
         Schema::create('friendship_requests', function (Blueprint $table) {
             $table->uuid('id')->primary();
-            $table->foreignUuid('match_id')->constrained('matches')->cascadeOnDelete();
             $table->foreignUuid('requester_id')->constrained('users')->cascadeOnDelete();
+            $table->foreignUuid('addressee_id')->constrained('users')->cascadeOnDelete();
             $table->enum('status', ['PENDING', 'ACCEPTED', 'REJECTED', 'EXPIRED'])->default('PENDING');
             $table->timestampTz('created_at')->useCurrent();
             $table->timestampTz('responded_at')->nullable();
-            $table->unique(['match_id', 'requester_id']);
+            $table->timestampTz('expires_at')->nullable(false);
+
+            $table->unique(['requester_id', 'addressee_id'], 'friendship_requests_unique_pending')->where('status', 'PENDING');
         });
 
-        DB::statement('CREATE INDEX friendship_requests_match ON friendship_requests (match_id)');
+        DB::statement('CREATE INDEX friendship_requests_addressee_status ON friendship_requests (addressee_id, status) WHERE status = \'PENDING\'');
+        DB::statement('CREATE INDEX friendship_requests_expires ON friendship_requests (expires_at) WHERE status = \'PENDING\'');
     }
 
     public function down(): void
     {
-        DB::statement('DROP INDEX IF EXISTS friendship_requests_match');
+        DB::statement('DROP INDEX IF EXISTS friendship_requests_expires');
+        DB::statement('DROP INDEX IF EXISTS friendship_requests_addressee_status');
         Schema::dropIfExists('friendship_requests');
     }
 };
