@@ -5,6 +5,7 @@ namespace App\Http\Middleware;
 use App\Models\ApiKey;
 use Closure;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Log;
 use Symfony\Component\HttpFoundation\Response;
 
@@ -61,6 +62,17 @@ class ApiKeyMiddleware
             return response()->json([
                 'error' => 'Invalid API key',
                 'message' => 'API key not found',
+                'code' => 'INVALID_API_KEY',
+            ], 401);
+        }
+
+        // CRITICAL: Verify the full API key hash cryptographically
+        if (! Hash::check($apiKeyHeader, $apiKey->key_hash)) {
+            Log::debug('API Key Middleware - HASH MISMATCH');
+
+            return response()->json([
+                'error' => 'Invalid API key',
+                'message' => 'API key is not valid',
                 'code' => 'INVALID_API_KEY',
             ], 401);
         }

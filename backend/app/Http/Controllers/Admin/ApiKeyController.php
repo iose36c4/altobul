@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Http\Resources\Admin\ApiKeyResource;
 use App\Models\ApiKey;
+use App\Models\User;
 use App\Services\ApiKeyService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -18,6 +19,8 @@ class ApiKeyController extends Controller
 
     public function index(Request $request): JsonResponse
     {
+        $this->authorizeAdmin($request->user());
+
         $keys = ApiKey::with('creator')
             ->orderBy('created_at', 'desc')
             ->paginate($request->input('per_page', 20));
@@ -35,6 +38,8 @@ class ApiKeyController extends Controller
 
     public function store(Request $request): JsonResponse
     {
+        $this->authorizeAdmin($request->user());
+
         $validator = Validator::make($request->all(), [
             'name' => ['required', 'string', 'max:255'],
             'type' => ['required', 'string', 'in:CLIENT,ADMIN,MOBILE,INTEGRATION'],
@@ -64,6 +69,8 @@ class ApiKeyController extends Controller
 
     public function show(ApiKey $apiKey): JsonResponse
     {
+        $this->authorizeAdmin(request()->user());
+
         $apiKey->load('creator');
 
         return response()->json([
@@ -73,10 +80,19 @@ class ApiKeyController extends Controller
 
     public function destroy(ApiKey $apiKey): JsonResponse
     {
+        $this->authorizeAdmin(request()->user());
+
         $this->apiKeyService->revokeApiKey($apiKey);
 
         return response()->json([
             'message' => 'API key revoked successfully',
         ]);
+    }
+
+    private function authorizeAdmin(?User $user): void
+    {
+        if (! $user || ! $user->isAdmin()) {
+            abort(403, 'Administrative privileges required');
+        }
     }
 }

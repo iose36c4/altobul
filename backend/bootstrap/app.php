@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Middleware\AdminAuthorizationMiddleware;
 use App\Http\Middleware\ApiKeyMiddleware;
 use App\Http\Middleware\IdempotencyMiddleware;
 use Illuminate\Foundation\Application;
@@ -18,6 +19,7 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->alias([
             'idempotency' => IdempotencyMiddleware::class,
             'api.key' => ApiKeyMiddleware::class,
+            'admin' => AdminAuthorizationMiddleware::class,
         ]);
     })
     ->withProviders([

@@ -12,6 +12,8 @@ class UserController extends Controller
 {
     public function index(Request $request): JsonResponse
     {
+        $this->authorizeAdmin($request->user());
+
         $query = User::query();
 
         if ($request->filled('search')) {
@@ -50,6 +52,8 @@ class UserController extends Controller
 
     public function show(User $user): JsonResponse
     {
+        $this->authorizeAdmin(request()->user());
+
         return response()->json([
             'user' => new UserResource($user->load('profile')),
         ]);
@@ -57,6 +61,8 @@ class UserController extends Controller
 
     public function suspend(User $user): JsonResponse
     {
+        $this->authorizeAdmin(request()->user());
+
         if ($user->status === 'suspended') {
             return response()->json([
                 'message' => 'User is already suspended',
@@ -73,6 +79,8 @@ class UserController extends Controller
 
     public function activate(User $user): JsonResponse
     {
+        $this->authorizeAdmin(request()->user());
+
         if ($user->status === 'active') {
             return response()->json([
                 'message' => 'User is already active',
@@ -89,6 +97,8 @@ class UserController extends Controller
 
     public function changeRole(Request $request, User $user): JsonResponse
     {
+        $this->authorizeAdmin($request->user());
+
         $request->validate([
             'role' => ['required', 'string', 'in:user,admin'],
         ]);
@@ -105,5 +115,12 @@ class UserController extends Controller
             'message' => 'User role updated successfully',
             'user' => new UserResource($user->fresh()),
         ]);
+    }
+
+    private function authorizeAdmin(?User $user): void
+    {
+        if (! $user || ! $user->isAdmin()) {
+            abort(403, 'Administrative privileges required');
+        }
     }
 }

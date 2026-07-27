@@ -85,7 +85,7 @@ Route::prefix('client')
 Route::prefix('admin')
     ->middleware(['api.key:ADMIN'])
     ->group(function () {
-        // Auth routes for admin
+        // Auth routes for admin (no admin middleware - any user can log in)
         Route::prefix('auth')->group(function () {
             Route::post('register', [AuthController::class, 'register']);
             Route::post('login', [AuthController::class, 'login']);
@@ -106,8 +106,8 @@ Route::prefix('admin')
             });
         });
 
-        // Admin Configuration
-        Route::middleware('auth:sanctum')->group(function () {
+        // Admin Configuration - requires admin authorization
+        Route::middleware(['auth:sanctum', 'admin'])->group(function () {
             Route::get('config', [ConfigController::class, 'show']);
             Route::put('config', [ConfigController::class, 'update']);
 
