@@ -12,7 +12,7 @@ class ProfileFieldOptionResource extends JsonResource
     {
         /** @var ProfileFieldOption $option */
         $option = $this->resource;
-        
+
         return [
             'id' => $option->id,
             'label' => $option->label,

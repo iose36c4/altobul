@@ -10,10 +10,10 @@ enum VisibilityLevel: string
     case MATCH = 'MATCH';
     case FRIENDS = 'FRIENDS';
     case PRIVATE = 'PRIVATE';
-    
+
     public function satisfies(RelationshipLevel $relationship): bool
     {
-        return match($this) {
+        return match ($this) {
             self::PUBLIC => true,
             self::MATCH => $relationship->isAtLeastMatch(),
             self::FRIENDS => $relationship->isFriendship(),

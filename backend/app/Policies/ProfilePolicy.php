@@ -2,11 +2,10 @@
 
 namespace App\Policies;
 
-use App\Models\User;
 use App\Models\Profile;
 use App\Models\ProfileFieldValue;
+use App\Models\User;
 use App\Services\Authorization\AuthorizationService;
-use App\Domain\Authorization\AuthorizationResult;
 
 class ProfilePolicy
 {

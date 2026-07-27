@@ -6,27 +6,29 @@ use App\Contracts\AuthorizationServiceInterface;
 use App\Domain\Authorization\AuthorizationReason;
 use App\Domain\Authorization\AuthorizationResult;
 use App\Domain\Authorization\VisibilityLevel;
+use App\Domain\Relationship\RelationshipLevel;
 use App\Domain\Relationship\RelationshipStatus;
 use App\Models\Block;
-use App\Models\UserMatch;
-use App\Models\Friendship;
-use App\Models\Toke;
 use App\Models\Conversation;
-use App\Models\ProfileFieldValue;
+use App\Models\Friendship;
+use App\Models\FriendshipRequest;
 use App\Models\Photo;
-use App\Models\Post;
-use App\Models\ProfileFieldValueAccess;
 use App\Models\PhotoAccess;
+use App\Models\Post;
 use App\Models\PostAccess;
+use App\Models\ProfileFieldValue;
+use App\Models\ProfileFieldValueAccess;
+use App\Models\Toke;
 use App\Models\User;
+use App\Models\UserMatch;
 use App\Services\Config\ConfigService;
-use Illuminate\Support\Facades\DB;
+use App\Services\Geo\GeoZoneService;
 
 class AuthorizationService implements AuthorizationServiceInterface
 {
     public function __construct(
         private ConfigService $configService,
-        private \App\Services\Geo\GeoZoneService $geoZoneService,
+        private GeoZoneService $geoZoneService,
     ) {}
 
     public function canDiscover(User $viewer, User $target): AuthorizationResult
@@ -35,45 +37,45 @@ class AuthorizationService implements AuthorizationServiceInterface
         if ($this->isBlocked($viewer, $target)) {
             return AuthorizationResult::denied(AuthorizationReason::BLOCKED);
         }
-        
+
         // 2. User status
         if ($target->status !== 'active' || $viewer->status !== 'active') {
             return AuthorizationResult::denied(AuthorizationReason::INACTIVE_USER);
         }
-        
+
         // 3. Discoverable setting
-        if (!$target->profile?->discoverable) {
+        if (! $target->profile?->discoverable) {
             return AuthorizationResult::denied(AuthorizationReason::NOT_DISCOVERABLE);
         }
-        
+
         // 4. Geo zone
-        if (!$this->geoZoneService->isInActiveZone($target->profile)) {
+        if (! $this->geoZoneService->isInActiveZone($target->profile)) {
             return AuthorizationResult::denied(AuthorizationReason::NOT_IN_ACTIVE_ZONE);
         }
-        
+
         // 5. Profile visibility
         $profileVis = $target->profile?->profile_visibility ?? VisibilityLevel::PUBLIC;
         $requiresVerified = $target->profile?->profile_requires_verified ?? false;
         $relationship = $this->getRelationshipStatus($viewer, $target);
-        
-        if (!$profileVis->satisfies($relationship->level)) {
+
+        if (! $profileVis->satisfies($relationship->level)) {
             return AuthorizationResult::denied(AuthorizationReason::INSUFFICIENT_RELATIONSHIP);
         }
-        
-        if ($requiresVerified && !$viewer->isVerified()) {
+
+        if ($requiresVerified && ! $viewer->isVerified()) {
             return AuthorizationResult::denied(AuthorizationReason::VERIFICATION_REQUIRED);
         }
-        
+
         return AuthorizationResult::allowed();
     }
 
     public function canViewProfile(User $viewer, User $owner): AuthorizationResult
     {
-        $visibility = $owner->profile?->profile_visibility 
-            ? VisibilityLevel::tryFrom($owner->profile->profile_visibility) 
+        $visibility = $owner->profile?->profile_visibility
+            ? VisibilityLevel::tryFrom($owner->profile->profile_visibility)
             : VisibilityLevel::PUBLIC;
         $requiresVerified = $owner->profile?->profile_requires_verified ?? false;
-        
+
         return $this->evaluateResourceAccess(
             $viewer, $owner,
             $visibility,
@@ -84,17 +86,17 @@ class AuthorizationService implements AuthorizationServiceInterface
 
     public function canViewProfileField(User $viewer, User $owner, string $fieldSlug): AuthorizationResult
     {
-        $fieldValue = ProfileFieldValue::whereHas('field', fn($q) => $q->where('slug', $fieldSlug))
+        $fieldValue = ProfileFieldValue::whereHas('field', fn ($q) => $q->where('slug', $fieldSlug))
             ->where('profile_id', $owner->id)
             ->first();
-            
-        if (!$fieldValue) {
+
+        if (! $fieldValue) {
             return AuthorizationResult::denied(AuthorizationReason::RESOURCE_DELETED);
         }
-        
+
         $visibility = $fieldValue->visibility_override ?? $fieldValue->field->default_visibility;
         $requiresVerified = $fieldValue->requires_verified_override ?? $fieldValue->field->default_requires_verified;
-        
+
         return $this->evaluateResourceAccess(
             $viewer, $owner,
             $visibility, $requiresVerified,
@@ -115,14 +117,14 @@ class AuthorizationService implements AuthorizationServiceInterface
     public function canViewPhoto(User $viewer, User $owner, string $photoId): AuthorizationResult
     {
         $photo = Photo::find($photoId);
-        if (!$photo) {
+        if (! $photo) {
             return AuthorizationResult::denied(AuthorizationReason::RESOURCE_DELETED);
         }
-        
+
         if ($photo->isExpired()) {
             return AuthorizationResult::denied(AuthorizationReason::RESOURCE_EXPIRED);
         }
-        
+
         return $this->evaluateResourceAccess(
             $viewer, $owner,
             $photo->visibility,
@@ -134,14 +136,14 @@ class AuthorizationService implements AuthorizationServiceInterface
     public function canViewPost(User $viewer, User $owner, string $postId): AuthorizationResult
     {
         $post = Post::find($postId);
-        if (!$post) {
+        if (! $post) {
             return AuthorizationResult::denied(AuthorizationReason::RESOURCE_DELETED);
         }
-        
+
         if ($post->isExpired()) {
             return AuthorizationResult::denied(AuthorizationReason::RESOURCE_EXPIRED);
         }
-        
+
         return $this->evaluateResourceAccess(
             $viewer, $owner,
             $post->visibility,
@@ -155,30 +157,30 @@ class AuthorizationService implements AuthorizationServiceInterface
         if ($sender->id === $receiver->id) {
             return AuthorizationResult::denied(AuthorizationReason::SELF_ACTION_FORBIDDEN);
         }
-        
+
         if ($this->isBlocked($sender, $receiver)) {
             return AuthorizationResult::denied(AuthorizationReason::BLOCKED);
         }
-        
+
         if ($receiver->status !== 'active') {
             return AuthorizationResult::denied(AuthorizationReason::INACTIVE_USER);
         }
-        
+
         // Check if receiver is in active zone (optional)
-        if (!$this->geoZoneService->isInActiveZone($receiver->profile)) {
+        if (! $this->geoZoneService->isInActiveZone($receiver->profile)) {
             return AuthorizationResult::denied(AuthorizationReason::NOT_IN_ACTIVE_ZONE);
         }
-        
+
         // Check for existing active toke
         $existing = Toke::where('sender_id', $sender->id)
             ->where('receiver_id', $receiver->id)
             ->whereIn('status', ['ACTIVE', 'CONSUMED'])
             ->exists();
-            
+
         if ($existing) {
             return AuthorizationResult::denied(AuthorizationReason::INVALID_STATE_TRANSITION);
         }
-        
+
         return AuthorizationResult::allowed();
     }
 
@@ -187,18 +189,18 @@ class AuthorizationService implements AuthorizationServiceInterface
         if ($this->isBlocked($initiator, $target)) {
             return AuthorizationResult::denied(AuthorizationReason::BLOCKED);
         }
-        
+
         $match = UserMatch::between($initiator, $target)->active()->first();
-        if (!$match) {
+        if (! $match) {
             return AuthorizationResult::denied(AuthorizationReason::MATCH_EXPIRED);
         }
-        
+
         // Check if friendship already exists
         $friendship = Friendship::between($initiator, $target)->active()->first();
         if ($friendship) {
             return AuthorizationResult::denied(AuthorizationReason::INVALID_STATE_TRANSITION);
         }
-        
+
         return AuthorizationResult::allowed();
     }
 
@@ -207,34 +209,34 @@ class AuthorizationService implements AuthorizationServiceInterface
         if ($requester->id === $addressee->id) {
             return AuthorizationResult::denied(AuthorizationReason::SELF_ACTION_FORBIDDEN);
         }
-        
+
         if ($this->isBlocked($requester, $addressee)) {
             return AuthorizationResult::denied(AuthorizationReason::BLOCKED);
         }
-        
+
         if ($addressee->status !== 'active') {
             return AuthorizationResult::denied(AuthorizationReason::INACTIVE_USER);
         }
-        
+
         // Check existing pending request
-        $existing = \App\Models\FriendshipRequest::where(function($q) use ($requester, $addressee) {
+        $existing = FriendshipRequest::where(function ($q) use ($requester, $addressee) {
             $q->where('requester_id', $requester->id)
-              ->where('addressee_id', $addressee->id);
-        })->orWhere(function($q) use ($requester, $addressee) {
+                ->where('addressee_id', $addressee->id);
+        })->orWhere(function ($q) use ($requester, $addressee) {
             $q->where('requester_id', $addressee->id)
-              ->where('addressee_id', $requester->id);
+                ->where('addressee_id', $requester->id);
         })->where('status', 'PENDING')->exists();
-        
+
         if ($existing) {
             return AuthorizationResult::denied(AuthorizationReason::INVALID_STATE_TRANSITION);
         }
-        
+
         // Check existing friendship
         $friendship = Friendship::between($requester, $addressee)->active()->first();
         if ($friendship) {
             return AuthorizationResult::denied(AuthorizationReason::INVALID_STATE_TRANSITION);
         }
-        
+
         return AuthorizationResult::allowed();
     }
 
@@ -243,17 +245,17 @@ class AuthorizationService implements AuthorizationServiceInterface
         if ($this->isBlocked($addressee, $requester)) {
             return AuthorizationResult::denied(AuthorizationReason::BLOCKED);
         }
-        
+
         return AuthorizationResult::allowed();
     }
 
     public function canEndFriendship(User $initiator, User $target): AuthorizationResult
     {
         $friendship = Friendship::between($initiator, $target)->active()->first();
-        if (!$friendship) {
+        if (! $friendship) {
             return AuthorizationResult::denied(AuthorizationReason::FRIENDSHIP_ENDED);
         }
-        
+
         return AuthorizationResult::allowed();
     }
 
@@ -262,32 +264,32 @@ class AuthorizationService implements AuthorizationServiceInterface
         if ($blocker->id === $blocked->id) {
             return AuthorizationResult::denied(AuthorizationReason::SELF_ACTION_FORBIDDEN);
         }
-        
+
         if (Block::where('blocker_id', $blocker->id)
             ->where('blocked_id', $blocked->id)
             ->exists()) {
             return AuthorizationResult::denied(AuthorizationReason::INVALID_STATE_TRANSITION);
         }
-        
+
         return AuthorizationResult::allowed();
     }
 
     public function canUnblock(User $blocker, User $blocked): AuthorizationResult
     {
-        if (!Block::where('blocker_id', $blocker->id)
+        if (! Block::where('blocker_id', $blocker->id)
             ->where('blocked_id', $blocked->id)
             ->exists()) {
             return AuthorizationResult::denied(AuthorizationReason::INVALID_STATE_TRANSITION);
         }
-        
+
         return AuthorizationResult::allowed();
     }
 
     public function isBlocked(User $a, User $b): bool
     {
-        return Block::where(function($q) use ($a, $b) {
+        return Block::where(function ($q) use ($a, $b) {
             $q->where('blocker_id', $a->id)->where('blocked_id', $b->id);
-        })->orWhere(function($q) use ($a, $b) {
+        })->orWhere(function ($q) use ($a, $b) {
             $q->where('blocker_id', $b->id)->where('blocked_id', $a->id);
         })->exists();
     }
@@ -297,20 +299,21 @@ class AuthorizationService implements AuthorizationServiceInterface
         if ($this->isBlocked($a, $b)) {
             return AuthorizationResult::denied(AuthorizationReason::BLOCKED);
         }
-        
+
         $relationship = $this->getRelationshipStatus($a, $b);
-        if (!$relationship->canChat()) {
-            if ($relationship->level === \App\Domain\Relationship\RelationshipLevel::MATCH) {
+        if (! $relationship->canChat()) {
+            if ($relationship->level === RelationshipLevel::MATCH) {
                 return AuthorizationResult::denied(AuthorizationReason::MATCH_EXPIRED);
             }
+
             return AuthorizationResult::denied(AuthorizationReason::FRIENDSHIP_ENDED);
         }
-        
+
         $conv = Conversation::between($a, $b)->first();
-        if (!$conv || !$conv->isActive()) {
+        if (! $conv || ! $conv->isActive()) {
             return AuthorizationResult::denied(AuthorizationReason::CONVERSATION_ENDED);
         }
-        
+
         return AuthorizationResult::allowed();
     }
 
@@ -324,23 +327,23 @@ class AuthorizationService implements AuthorizationServiceInterface
         if ($owner->id === $grantee->id) {
             return AuthorizationResult::denied(AuthorizationReason::SELF_ACTION_FORBIDDEN);
         }
-        
+
         if ($this->isBlocked($owner, $grantee)) {
             return AuthorizationResult::denied(AuthorizationReason::BLOCKED);
         }
-        
+
         // Verify resource exists and belongs to owner
         $resource = $this->getResource($resourceType, $resourceId);
-        if (!$resource || $resource->user_id !== $owner->id) {
+        if (! $resource || $resource->user_id !== $owner->id) {
             return AuthorizationResult::denied(AuthorizationReason::RESOURCE_DELETED);
         }
-        
+
         // Only PRIVATE resources can have grants
         $visibility = $resource->visibility ?? ($resource->default_visibility ?? null);
         if ($visibility !== VisibilityLevel::PRIVATE) {
             return AuthorizationResult::denied(AuthorizationReason::INVALID_STATE_TRANSITION);
         }
-        
+
         return AuthorizationResult::allowed();
     }
 
@@ -349,12 +352,12 @@ class AuthorizationService implements AuthorizationServiceInterface
         if ($owner->id === $grantee->id) {
             return AuthorizationResult::denied(AuthorizationReason::SELF_ACTION_FORBIDDEN);
         }
-        
+
         $grant = $this->getGrant($resourceType, $resourceId, $grantee);
-        if (!$grant) {
+        if (! $grant) {
             return AuthorizationResult::denied(AuthorizationReason::RESOURCE_DELETED);
         }
-        
+
         return AuthorizationResult::allowed();
     }
 
@@ -363,20 +366,20 @@ class AuthorizationService implements AuthorizationServiceInterface
         if ($user->verification_status === 'pending') {
             return AuthorizationResult::denied(AuthorizationReason::INVALID_STATE_TRANSITION);
         }
-        
+
         if ($user->verification_status === 'verified') {
             return AuthorizationResult::denied(AuthorizationReason::INVALID_STATE_TRANSITION);
         }
-        
+
         return AuthorizationResult::allowed();
     }
 
     public function canReviewVerification(User $admin, string $requestId): AuthorizationResult
     {
-        if (!$admin->isAdmin()) {
+        if (! $admin->isAdmin()) {
             return AuthorizationResult::denied(AuthorizationReason::UNAUTHORIZED);
         }
-        
+
         return AuthorizationResult::allowed();
     }
 
@@ -392,24 +395,24 @@ class AuthorizationService implements AuthorizationServiceInterface
         if ($friendship) {
             return RelationshipStatus::friendship($friendship);
         }
-        
+
         // 2. Check Match
         $match = UserMatch::between($a, $b)->active()->first();
         if ($match) {
             return RelationshipStatus::fromMatch($match);
         }
-        
+
         // 3. Check Mutual Toke
-        $mutualTokes = Toke::where(function($q) use ($a, $b) {
+        $mutualTokes = Toke::where(function ($q) use ($a, $b) {
             $q->where('sender_id', $a->id)->where('receiver_id', $b->id);
-        })->orWhere(function($q) use ($a, $b) {
+        })->orWhere(function ($q) use ($a, $b) {
             $q->where('sender_id', $b->id)->where('receiver_id', $a->id);
         })->where('status', 'ACTIVE')->count();
-        
+
         if ($mutualTokes === 2) {
             return RelationshipStatus::mutualToke();
         }
-        
+
         // 4. Check Unidirectional Toke
         $toke = Toke::where('sender_id', $a->id)
             ->where('receiver_id', $b->id)
@@ -418,7 +421,7 @@ class AuthorizationService implements AuthorizationServiceInterface
         if ($toke) {
             return RelationshipStatus::toked();
         }
-        
+
         return RelationshipStatus::none();
     }
 
@@ -439,19 +442,20 @@ class AuthorizationService implements AuthorizationServiceInterface
                     return AuthorizationResult::denied(AuthorizationReason::RESOURCE_EXPIRED);
                 }
             }
+
             return AuthorizationResult::allowed();
         }
-        
+
         // 1. BLOCK - absolute override
         if ($this->isBlocked($viewer, $owner) || $this->isBlocked($owner, $viewer)) {
             return AuthorizationResult::denied(AuthorizationReason::BLOCKED);
         }
-        
+
         // 2. USER STATUS
         if ($viewer->status !== 'active' || $owner->status !== 'active') {
             return AuthorizationResult::denied(AuthorizationReason::INACTIVE_USER);
         }
-        
+
         // 3. EXPIRATION CHECK
         if (in_array($resourceType, ['post', 'toke', 'match'])) {
             $model = $this->getResource($resourceType, $resourceId);
@@ -459,32 +463,32 @@ class AuthorizationService implements AuthorizationServiceInterface
                 return AuthorizationResult::denied(AuthorizationReason::RESOURCE_EXPIRED);
             }
         }
-        
+
         // 4. RELATIONSHIP vs VISIBILITY
         $relationship = $this->getRelationshipStatus($viewer, $owner);
-        if (!$visibility->satisfies($relationship->level)) {
+        if (! $visibility->satisfies($relationship->level)) {
             return AuthorizationResult::denied(AuthorizationReason::INSUFFICIENT_RELATIONSHIP);
         }
-        
+
         // 5. VERIFICATION REQUIREMENT
-        if ($requiresVerified && !$viewer->isVerified()) {
+        if ($requiresVerified && ! $viewer->isVerified()) {
             return AuthorizationResult::denied(AuthorizationReason::VERIFICATION_REQUIRED);
         }
-        
+
         // 6. EXPLICIT GRANT (only for PRIVATE)
         if ($visibility === VisibilityLevel::PRIVATE) {
             $hasGrant = $this->hasActiveGrant($viewer, $resourceType, $resourceId);
-            if (!$hasGrant) {
+            if (! $hasGrant) {
                 return AuthorizationResult::denied(AuthorizationReason::NO_EXPLICIT_GRANT);
             }
         }
-        
+
         return AuthorizationResult::allowed();
     }
 
     private function getResource(string $type, string $id)
     {
-        return match($type) {
+        return match ($type) {
             'photo' => Photo::find($id),
             'post' => Post::find($id),
             'profile_field' => ProfileFieldValue::find($id),
@@ -496,7 +500,7 @@ class AuthorizationService implements AuthorizationServiceInterface
 
     private function hasActiveGrant(User $grantee, string $resourceType, string $resourceId): bool
     {
-        return match($resourceType) {
+        return match ($resourceType) {
             'photo' => PhotoAccess::where('photo_id', $resourceId)
                 ->where('grantee_id', $grantee->id)->exists(),
             'post' => PostAccess::where('post_id', $resourceId)
@@ -506,10 +510,10 @@ class AuthorizationService implements AuthorizationServiceInterface
             default => false,
         };
     }
-    
+
     private function getGrant(string $resourceType, string $resourceId, User $grantee)
     {
-        return match($resourceType) {
+        return match ($resourceType) {
             'photo' => PhotoAccess::where('photo_id', $resourceId)
                 ->where('grantee_id', $grantee->id)->first(),
             'post' => PostAccess::where('post_id', $resourceId)

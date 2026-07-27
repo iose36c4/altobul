@@ -12,7 +12,7 @@ class PostAttachmentResource extends JsonResource
     {
         /** @var PostAttachment $attachment */
         $attachment = $this->resource;
-        
+
         return [
             'url' => $attachment->getUrl(),
             'width' => $attachment->width,

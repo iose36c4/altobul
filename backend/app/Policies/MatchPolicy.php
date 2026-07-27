@@ -3,7 +3,7 @@
 namespace App\Policies;
 
 use App\Models\User;
-use App\Models\Match;
+use App\Models\UserMatch;
 use App\Services\Authorization\AuthorizationService;
 
 class MatchPolicy
@@ -12,17 +12,17 @@ class MatchPolicy
         private AuthorizationService $authz,
     ) {}
 
-    public function view(User $viewer, Match $match): bool
+    public function view(User $viewer, UserMatch $match): bool
     {
         return $match->user_a_id === $viewer->id || $match->user_b_id === $viewer->id;
     }
 
-    public function convertToFriendship(User $user, Match $match): bool
+    public function convertToFriendship(User $user, UserMatch $match): bool
     {
         return $this->authz->canConvertMatchToFriendship($user, $match->userA() === $user ? $match->userB : $match->userA)->allowed;
     }
 
-    public function end(User $user, Match $match): bool
+    public function end(User $user, UserMatch $match): bool
     {
         return ($match->user_a_id === $user->id || $match->user_b_id === $user->id) && $match->status === 'ACTIVE';
     }

@@ -2,13 +2,12 @@
 
 namespace Tests\Feature;
 
-use App\Models\User;
 use App\Models\Profile;
-use App\Domain\Authorization\VisibilityLevel;
-use Tests\TestCase;
+use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
+use Tests\TestCase;
 
 class ProfileTest extends TestCase
 {
@@ -17,10 +16,10 @@ class ProfileTest extends TestCase
     protected function createUser(array $attributes = []): User
     {
         $userId = (string) Str::uuid();
-        
+
         DB::table('users')->insert([
             'id' => $userId,
-            'email' => $attributes['email'] ?? 'test-' . Str::uuid() . '@example.com',
+            'email' => $attributes['email'] ?? 'test-'.Str::uuid().'@example.com',
             'password_hash' => bcrypt('password'),
             'email_verified_at' => now(),
             'verification_status' => 'not_verified',
@@ -37,7 +36,7 @@ class ProfileTest extends TestCase
     {
         return Profile::create(array_merge([
             'user_id' => $user->id,
-            'location' => \DB::raw("ST_SetSRID(ST_MakePoint(0, 0), 4326)"),
+            'location' => \DB::raw('ST_SetSRID(ST_MakePoint(0, 0), 4326)'),
             'location_precision_meters' => 1000,
             'discoverable' => true,
             'profile_visibility' => 'PUBLIC',
@@ -96,7 +95,7 @@ class ProfileTest extends TestCase
     {
         $user1 = $this->createUser();
         $user2 = $this->createUser();
-        
+
         $this->createProfile($user1);
 
         $response = $this->actingAs($user2, 'sanctum')
@@ -111,7 +110,7 @@ class ProfileTest extends TestCase
     {
         $owner = $this->createUser();
         $viewer = $this->createUser();
-        
+
         $this->createProfile($owner, [
             'profile_visibility' => 'PRIVATE',
             'title' => 'Secret Title',

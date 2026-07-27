@@ -8,10 +8,13 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 class PostAttachment extends Model
 {
     protected $table = 'post_attachments';
+
     protected $primaryKey = 'id';
+
     public $incrementing = false;
+
     protected $keyType = 'string';
-    
+
     protected $fillable = [
         'post_id',
         'storage_key',
@@ -20,7 +23,7 @@ class PostAttachment extends Model
         'height',
         'size_bytes',
     ];
-    
+
     protected $casts = [
         'created_at' => 'datetime',
         'width' => 'integer',
@@ -35,6 +38,6 @@ class PostAttachment extends Model
 
     public function getUrl(): string
     {
-        return config('filesystems.disks.s3.url', 'https://s3.amazonaws.com') . '/' . config('filesystems.disks.s3.bucket') . '/' . $this->storage_key;
+        return config('filesystems.disks.s3.url', 'https://s3.amazonaws.com').'/'.config('filesystems.disks.s3.bucket').'/'.$this->storage_key;
     }
 }

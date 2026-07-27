@@ -18,14 +18,14 @@ class GeoZoneController extends Controller
             ->paginate($request->query('per_page', 20));
 
         return response()->json([
-            'zones' => $zones->map(fn($z) => [
+            'zones' => $zones->map(fn ($z) => [
                 'id' => $z->id,
                 'name' => $z->name,
                 'description' => $z->description,
                 'is_active' => $z->is_active,
                 'created_by' => $z->created_by,
                 'created_at' => $z->created_at?->toISOString(),
-                'polygons' => $z->polygons->map(fn($p) => [
+                'polygons' => $z->polygons->map(fn ($p) => [
                     'id' => $p->id,
                     'name' => $p->name,
                     'geometry' => $p->geometry,
@@ -79,7 +79,7 @@ class GeoZoneController extends Controller
                 'description' => $zone->description,
                 'is_active' => $zone->is_active,
                 'created_at' => $zone->created_at?->toISOString(),
-                'polygons' => $zone->polygons->map(fn($p) => [
+                'polygons' => $zone->polygons->map(fn ($p) => [
                     'id' => $p->id,
                     'name' => $p->name,
                     'geometry' => $p->geometry,
@@ -102,7 +102,7 @@ class GeoZoneController extends Controller
                 'created_by' => $zone->created_by,
                 'created_at' => $zone->created_at?->toISOString(),
                 'updated_at' => $zone->updated_at?->toISOString(),
-                'polygons' => $zone->polygons->map(fn($p) => [
+                'polygons' => $zone->polygons->map(fn ($p) => [
                     'id' => $p->id,
                     'name' => $p->name,
                     'geometry' => $p->geometry,
@@ -133,7 +133,7 @@ class GeoZoneController extends Controller
                 'created_by' => $zone->created_by,
                 'created_at' => $zone->created_at?->toISOString(),
                 'updated_at' => $zone->updated_at?->toISOString(),
-                'polygons' => $zone->polygons->map(fn($p) => [
+                'polygons' => $zone->polygons->map(fn ($p) => [
                     'id' => $p->id,
                     'name' => $p->name,
                     'geometry' => $p->geometry,

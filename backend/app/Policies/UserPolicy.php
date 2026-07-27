@@ -4,7 +4,6 @@ namespace App\Policies;
 
 use App\Models\User;
 use App\Services\Authorization\AuthorizationService;
-use App\Domain\Authorization\AuthorizationResult;
 
 class UserPolicy
 {

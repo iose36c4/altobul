@@ -4,17 +4,19 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
-use App\Traits\HasExpiration;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class ProfileFieldValue extends Model
 {
     protected $table = 'profile_field_values';
+
     protected $primaryKey = 'id';
+
     public $incrementing = false;
+
     protected $keyType = 'string';
-    
+
     protected $fillable = [
         'profile_id',
         'field_id',
@@ -26,7 +28,7 @@ class ProfileFieldValue extends Model
         'requires_verified_override',
         'value_json',
     ];
-    
+
     protected $casts = [
         'value_number' => 'decimal:2',
         'value_boolean' => 'boolean',
@@ -41,12 +43,12 @@ class ProfileFieldValue extends Model
     {
         return $this->belongsTo(Profile::class, 'profile_id', 'user_id');
     }
-    
+
     public function field(): BelongsTo
     {
         return $this->belongsTo(ProfileFieldDefinition::class, 'field_id', 'id');
     }
-    
+
     public function selectedOptions(): BelongsToMany
     {
         return $this->belongsToMany(
@@ -56,17 +58,17 @@ class ProfileFieldValue extends Model
             'option_id'
         );
     }
-    
+
     public function grants(): HasMany
     {
         return $this->hasMany(ProfileFieldValueAccess::class, 'field_value_id', 'id');
     }
-    
+
     public function getEffectiveVisibilityAttribute(): string
     {
         return $this->visibility_override ?? $this->field->default_visibility;
     }
-    
+
     public function getEffectiveRequiresVerifiedAttribute(): bool
     {
         return $this->requires_verified_override ?? $this->field->default_requires_verified;

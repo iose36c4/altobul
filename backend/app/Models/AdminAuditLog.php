@@ -8,11 +8,15 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 class AdminAuditLog extends Model
 {
     protected $table = 'admin_audit_logs';
+
     protected $primaryKey = 'id';
+
     public $incrementing = false;
+
     protected $keyType = 'string';
+
     public $timestamps = false;
-    
+
     protected $fillable = [
         'id',
         'admin_id',
@@ -24,7 +28,7 @@ class AdminAuditLog extends Model
         'user_agent',
         'created_at',
     ];
-    
+
     protected $casts = [
         'metadata' => 'json',
         'created_at' => 'datetime',

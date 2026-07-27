@@ -19,7 +19,7 @@ class ProfileFieldDefinitionController extends Controller
             ->get();
 
         return response()->json([
-            'fields' => $fields->map(fn($f) => [
+            'fields' => $fields->map(fn ($f) => [
                 'id' => $f->id,
                 'slug' => $f->slug,
                 'label' => $f->label,
@@ -30,7 +30,7 @@ class ProfileFieldDefinitionController extends Controller
                 'validation_rules' => $f->validation_rules,
                 'sort_order' => $f->sort_order,
                 'is_active' => $f->is_active,
-                'options' => $f->options->map(fn($o) => [
+                'options' => $f->options->map(fn ($o) => [
                     'id' => $o->id,
                     'label' => $o->label,
                     'value' => $o->value,
@@ -73,7 +73,7 @@ class ProfileFieldDefinitionController extends Controller
                 'validation_rules' => $field->validation_rules,
                 'sort_order' => $field->sort_order,
                 'is_active' => $field->is_active,
-                'options' => $field->options->map(fn($o) => [
+                'options' => $field->options->map(fn ($o) => [
                     'id' => $o->id,
                     'label' => $o->label,
                     'value' => $o->value,
@@ -100,7 +100,7 @@ class ProfileFieldDefinitionController extends Controller
                 'validation_rules' => $field->validation_rules,
                 'sort_order' => $field->sort_order,
                 'is_active' => $field->is_active,
-                'options' => $field->options->map(fn($o) => [
+                'options' => $field->options->map(fn ($o) => [
                     'id' => $o->id,
                     'label' => $o->label,
                     'value' => $o->value,
@@ -125,7 +125,7 @@ class ProfileFieldDefinitionController extends Controller
 
             foreach ($options as $index => $option) {
                 $optionId = $option['id'] ?? null;
-                
+
                 if ($optionId && in_array($optionId, $existingIds)) {
                     ProfileFieldOption::where('id', $optionId)->update([
                         'label' => $option['label'],
@@ -165,7 +165,7 @@ class ProfileFieldDefinitionController extends Controller
                 'validation_rules' => $field->validation_rules,
                 'sort_order' => $field->sort_order,
                 'is_active' => $field->is_active,
-                'options' => $field->options->map(fn($o) => [
+                'options' => $field->options->map(fn ($o) => [
                     'id' => $o->id,
                     'label' => $o->label,
                     'value' => $o->value,

@@ -12,7 +12,7 @@ class PostResource extends JsonResource
     {
         /** @var Post $post */
         $post = $this->resource;
-        
+
         return [
             'id' => $post->id,
             'content_md' => $post->content_md,

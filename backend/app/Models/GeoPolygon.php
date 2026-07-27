@@ -9,17 +9,20 @@ use Illuminate\Support\Facades\DB;
 class GeoPolygon extends Model
 {
     protected $table = 'geo_polygons';
+
     protected $primaryKey = 'id';
+
     public $incrementing = false;
+
     protected $keyType = 'string';
-    
+
     protected $fillable = [
         'zone_id',
         'name',
         'geometry',
         'sort_order',
     ];
-    
+
     protected $casts = [
         'geometry' => 'array',
         'sort_order' => 'integer',
@@ -36,8 +39,8 @@ class GeoPolygon extends Model
     protected static function booted(): void
     {
         static::saving(function (self $polygon) {
-            if ($polygon->geometry && !$polygon->getAttribute('geom')) {
-                $polygon->setAttribute('geom', DB::raw("ST_SetSRID(ST_GeomFromGeoJSON(?), 4326)::geography", [json_encode($polygon->geometry)]));
+            if ($polygon->geometry && ! $polygon->getAttribute('geom')) {
+                $polygon->setAttribute('geom', DB::raw('ST_SetSRID(ST_GeomFromGeoJSON(?), 4326)::geography', [json_encode($polygon->geometry)]));
             }
         });
     }

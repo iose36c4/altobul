@@ -12,7 +12,7 @@ class ProfileFieldValueResource extends JsonResource
     {
         /** @var ProfileFieldValue $value */
         $value = $this->resource;
-        
+
         return [
             'id' => $value->id,
             'field_id' => $value->field_id,

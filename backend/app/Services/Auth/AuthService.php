@@ -3,13 +3,12 @@
 namespace App\Services\Auth;
 
 use App\Models\User;
-use App\Models\Profile;
 use App\Models\VerificationRequest;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Password;
 use Illuminate\Support\Str;
-use Laravel\Sanctum\PersonalAccessToken;
-use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
 
 class AuthService
 {
@@ -17,7 +16,7 @@ class AuthService
     {
         return DB::transaction(function () use ($data) {
             $userId = (string) Str::uuid();
-            
+
             DB::table('users')->insert([
                 'id' => $userId,
                 'email' => $data['email'],
@@ -32,7 +31,7 @@ class AuthService
 
             DB::table('profiles')->insert([
                 'user_id' => $userId,
-                'location' => DB::raw("ST_SetSRID(ST_MakePoint(0, 0), 4326)"),
+                'location' => DB::raw('ST_SetSRID(ST_MakePoint(0, 0), 4326)'),
                 'location_precision_meters' => config('app.location_default_precision_meters', 1000),
                 'discoverable' => true,
                 'profile_visibility' => 'PUBLIC',
@@ -51,18 +50,16 @@ class AuthService
     {
         $user = User::where('email', $credentials['email'])->first();
 
-        if (!$user || !Hash::check($credentials['password'], $user->password_hash)) {
-            throw new \Illuminate\Validation\ValidationException(
-                \Illuminate\Validation\Validator::make([], []),
-                'Invalid credentials'
-            );
+        if (! $user || ! Hash::check($credentials['password'], $user->password_hash)) {
+            throw ValidationException::withMessages([
+                'email' => ['Invalid credentials'],
+            ]);
         }
 
         if ($user->status !== 'active') {
-            throw new \Illuminate\Validation\ValidationException(
-                \Illuminate\Validation\Validator::make([], []),
-                'Account is not active'
-            );
+            throw ValidationException::withMessages([
+                'email' => ['Account is not active'],
+            ]);
         }
 
         // Update last_seen_at

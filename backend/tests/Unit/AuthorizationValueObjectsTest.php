@@ -7,8 +7,8 @@ use App\Domain\Authorization\AuthorizationResult;
 use App\Domain\Authorization\VisibilityLevel;
 use App\Domain\Relationship\RelationshipLevel;
 use App\Domain\Relationship\RelationshipStatus;
-use App\Models\Match as MatchModel;
 use App\Models\Friendship;
+use App\Models\UserMatch;
 use PHPUnit\Framework\TestCase;
 
 class AuthorizationValueObjectsTest extends TestCase
@@ -85,8 +85,9 @@ class AuthorizationValueObjectsTest extends TestCase
     {
         // Skip this test for now due to PHP 8 match keyword issue
         $this->markTestSkipped('PHP 8 match keyword conflict');
+
         return;
-        
+
         $none = RelationshipStatus::none();
         $this->assertFalse($none->canChat());
 
@@ -96,10 +97,10 @@ class AuthorizationValueObjectsTest extends TestCase
         $mutual = RelationshipStatus::mutualToke();
         $this->assertFalse($mutual->canChat());
 
-        $matchModel = RelationshipStatus::fromMatch(new \App\Models\Match());
-        $this->assertTrue($matchModel->canChat());
+        $match = RelationshipStatus::fromMatch(new UserMatch);
+        $this->assertTrue($match->canChat());
 
-        $friendship = RelationshipStatus::friendship(new Friendship());
+        $friendship = RelationshipStatus::friendship(new Friendship);
         $this->assertTrue($friendship->canChat());
     }
 }

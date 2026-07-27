@@ -20,7 +20,7 @@ class UserResource extends JsonResource
             'is_online' => $this->isOnline(),
             'is_verified' => $this->isVerified(),
             'created_at' => $this->created_at?->toISOString(),
-            'profile' => $this->whenLoaded('profile', fn() => new ProfileResource($this->profile)),
+            'profile' => $this->whenLoaded('profile', fn () => new ProfileResource($this->profile)),
         ];
     }
 }

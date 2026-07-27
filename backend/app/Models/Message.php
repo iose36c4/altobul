@@ -8,10 +8,13 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 class Message extends Model
 {
     protected $table = 'messages';
+
     protected $primaryKey = 'id';
+
     public $incrementing = false;
+
     protected $keyType = 'string';
-    
+
     protected $fillable = [
         'conversation_id',
         'sender_id',
@@ -19,7 +22,7 @@ class Message extends Model
         'read_at',
         'deleted_at',
     ];
-    
+
     protected $casts = [
         'read_at' => 'datetime',
         'created_at' => 'datetime',
@@ -30,17 +33,17 @@ class Message extends Model
     {
         return $this->belongsTo(Conversation::class, 'conversation_id', 'id');
     }
-    
+
     public function sender(): BelongsTo
     {
         return $this->belongsTo(User::class, 'sender_id', 'id');
     }
-    
+
     public function isRead(): bool
     {
         return $this->read_at !== null;
     }
-    
+
     public function markAsRead(): void
     {
         $this->update(['read_at' => now()]);

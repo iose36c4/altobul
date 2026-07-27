@@ -4,16 +4,16 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\UpdateConfigRequest;
-use App\Http\Resources\Admin\ConfigResource;
 use App\Models\AppConfig;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Support\Facades\Cache;
 
 class ConfigController extends Controller
 {
     public function show(): JsonResponse
     {
-        $configs = AppConfig::all()->keyBy('key')->map(fn($c) => $c->value);
-        
+        $configs = AppConfig::all()->keyBy('key')->map(fn ($c) => $c->value);
+
         return response()->json([
             'configs' => $configs,
         ]);
@@ -31,10 +31,10 @@ class ConfigController extends Controller
                 ]
             );
         }
-        
+
         // Clear cache
-        \Illuminate\Support\Facades\Cache::flush();
-        
+        Cache::flush();
+
         return response()->json([
             'message' => 'Configuration updated successfully',
         ]);

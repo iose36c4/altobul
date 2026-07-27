@@ -1,0 +1,82 @@
+<?php
+
+namespace App\Http\Controllers\Admin;
+
+use App\Http\Controllers\Controller;
+use App\Http\Resources\Admin\ApiKeyResource;
+use App\Models\ApiKey;
+use App\Services\ApiKeyService;
+use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Validator;
+
+class ApiKeyController extends Controller
+{
+    public function __construct(
+        private ApiKeyService $apiKeyService,
+    ) {}
+
+    public function index(Request $request): JsonResponse
+    {
+        $keys = ApiKey::with('creator')
+            ->orderBy('created_at', 'desc')
+            ->paginate($request->input('per_page', 20));
+
+        return response()->json([
+            'api_keys' => ApiKeyResource::collection($keys),
+            'pagination' => [
+                'current_page' => $keys->currentPage(),
+                'last_page' => $keys->lastPage(),
+                'per_page' => $keys->perPage(),
+                'total' => $keys->total(),
+            ],
+        ]);
+    }
+
+    public function store(Request $request): JsonResponse
+    {
+        $validator = Validator::make($request->all(), [
+            'name' => ['required', 'string', 'max:255'],
+            'type' => ['required', 'string', 'in:CLIENT,ADMIN,MOBILE,INTEGRATION'],
+            'expires_in_days' => ['nullable', 'integer', 'min:1', 'max:3650'],
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'error' => 'Validation failed',
+                'errors' => $validator->errors(),
+            ], 422);
+        }
+
+        $result = $this->apiKeyService->createApiKey(
+            $request->user(),
+            $request->input('name'),
+            $request->input('type'),
+            $request->input('expires_in_days')
+        );
+
+        return response()->json([
+            'api_key' => new ApiKeyResource($result['api_key']),
+            'raw_key' => $result['raw_key'],
+            'warning' => 'This is the only time the raw key will be shown. Store it securely.',
+        ], 201);
+    }
+
+    public function show(ApiKey $apiKey): JsonResponse
+    {
+        $apiKey->load('creator');
+
+        return response()->json([
+            'api_key' => new ApiKeyResource($apiKey),
+        ]);
+    }
+
+    public function destroy(ApiKey $apiKey): JsonResponse
+    {
+        $this->apiKeyService->revokeApiKey($apiKey);
+
+        return response()->json([
+            'message' => 'API key revoked successfully',
+        ]);
+    }
+}

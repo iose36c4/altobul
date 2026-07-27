@@ -2,20 +2,23 @@
 
 namespace App\Models;
 
+use App\Traits\HasExpiration;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use Illuminate\Database\Eloquent\Builder;
-use App\Traits\HasExpiration;
 
 class VerificationRequest extends Model
 {
     use HasExpiration;
-    
+
     protected $table = 'verification_requests';
+
     protected $primaryKey = 'id';
+
     public $incrementing = false;
+
     protected $keyType = 'string';
-    
+
     protected $fillable = [
         'user_id',
         'status',
@@ -25,7 +28,7 @@ class VerificationRequest extends Model
         'verification_method',
         'external_reference',
     ];
-    
+
     protected $casts = [
         'status' => 'string',
         'submitted_at' => 'datetime',
@@ -36,17 +39,17 @@ class VerificationRequest extends Model
     {
         return $this->belongsTo(User::class, 'user_id', 'id');
     }
-    
+
     public function reviewedBy(): BelongsTo
     {
         return $this->belongsTo(User::class, 'reviewed_by', 'id');
     }
-    
+
     public function scopePending(Builder $query): Builder
     {
         return $query->where('status', 'PENDING');
     }
-    
+
     public function scopeActive(Builder $query): Builder
     {
         return $query->whereIn('status', ['PENDING', 'APPROVED']);

@@ -8,10 +8,13 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 class ProfileFieldDefinition extends Model
 {
     protected $table = 'profile_fields';
+
     protected $primaryKey = 'id';
+
     public $incrementing = false;
+
     protected $keyType = 'string';
-    
+
     protected $fillable = [
         'slug',
         'label',
@@ -25,7 +28,7 @@ class ProfileFieldDefinition extends Model
         'default_requires_verified',
         'sort_order',
     ];
-    
+
     protected $casts = [
         'validation_rules' => 'json',
         'is_active' => 'boolean',
@@ -43,17 +46,17 @@ class ProfileFieldDefinition extends Model
     {
         return $this->hasMany(ProfileFieldOption::class, 'field_id', 'id');
     }
-    
+
     public function values(): HasMany
     {
         return $this->hasMany(ProfileFieldValue::class, 'field_id', 'id');
     }
-    
+
     public function scopeActive($query)
     {
         return $query->where('is_active', true);
     }
-    
+
     public function scopeFilterable($query)
     {
         return $query->where('is_filterable', true);

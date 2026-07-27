@@ -2,6 +2,8 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Resources\PhotoResource;
+use App\Http\Resources\PostResource;
 use App\Http\Resources\PublicProfileResource;
 use App\Http\Resources\UserResource;
 use App\Models\User;
@@ -33,7 +35,7 @@ class UserController extends Controller
             ->get();
 
         return response()->json([
-            'photos' => \App\Http\Resources\PhotoResource::collection($photos),
+            'photos' => PhotoResource::collection($photos),
         ]);
     }
 
@@ -45,7 +47,7 @@ class UserController extends Controller
             ->get();
 
         return response()->json([
-            'posts' => \App\Http\Resources\PostResource::collection($posts),
+            'posts' => PostResource::collection($posts),
         ]);
     }
 }

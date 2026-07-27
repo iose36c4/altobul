@@ -2,9 +2,8 @@
 
 namespace App\Policies;
 
-use App\Models\User;
 use App\Models\Conversation;
-use App\Models\Message;
+use App\Models\User;
 use App\Services\Authorization\AuthorizationService;
 
 class ConversationPolicy
@@ -25,7 +24,7 @@ class ConversationPolicy
 
     public function end(User $user, Conversation $conversation): bool
     {
-        return ($conversation->user_a_id === $user->id || $conversation->user_b_id === $user->id) 
+        return ($conversation->user_a_id === $user->id || $conversation->user_b_id === $user->id)
             && $conversation->status === 'ACTIVE';
     }
 }

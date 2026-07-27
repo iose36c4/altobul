@@ -3,15 +3,16 @@
 namespace App\Http\Resources;
 
 use App\Models\Profile;
+use App\Models\ProfileFieldValue;
 use App\Models\User;
 use App\Services\Authorization\AuthorizationService;
-use App\Domain\Authorization\VisibilityLevel;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
 class PublicProfileResource extends JsonResource
 {
     private AuthorizationService $authorization;
+
     private ?User $viewer;
 
     public function __construct(
@@ -58,7 +59,7 @@ class PublicProfileResource extends JsonResource
         string $visibility,
         bool $requiresVerified
     ): mixed {
-        if (!$viewer || $viewer->id !== $owner->id) {
+        if (! $viewer || $viewer->id !== $owner->id) {
             $result = $this->authorization->canViewProfileFixedField(
                 $viewer ?? $owner,
                 $owner,
@@ -67,7 +68,7 @@ class PublicProfileResource extends JsonResource
                 $requiresVerified
             );
 
-            if (!$result->allowed) {
+            if (! $result->allowed) {
                 return null;
             }
         }
@@ -78,16 +79,16 @@ class PublicProfileResource extends JsonResource
     private function getDynamicFieldValue(
         ?User $viewer,
         User $owner,
-        \App\Models\ProfileFieldValue $fieldValue
+        ProfileFieldValue $fieldValue
     ): ?array {
-        if (!$viewer || $viewer->id !== $owner->id) {
+        if (! $viewer || $viewer->id !== $owner->id) {
             $result = $this->authorization->canViewProfileField(
                 $viewer ?? $owner,
                 $owner,
                 $fieldValue->field->slug
             );
 
-            if (!$result->allowed) {
+            if (! $result->allowed) {
                 return null;
             }
         }

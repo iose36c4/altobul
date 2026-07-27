@@ -4,12 +4,11 @@ namespace App\Http\Controllers;
 
 use App\Http\Requests\Profile\UpdateFieldValueRequest;
 use App\Http\Requests\Profile\UpdateProfileRequest;
+use App\Http\Resources\ProfileFieldDefinitionResource;
 use App\Http\Resources\ProfileFieldValueResource;
 use App\Http\Resources\ProfileResource;
-use App\Models\User;
-use App\Models\Profile;
 use App\Models\ProfileFieldDefinition;
-use App\Models\ProfileFieldValue;
+use App\Models\User;
 use App\Services\Profile\ProfileFieldService;
 use App\Services\Profile\ProfileService;
 use Illuminate\Http\JsonResponse;
@@ -26,7 +25,7 @@ class ProfileController extends Controller
     {
         $user = $request->user();
         $this->authorize('view', $user);
-        
+
         return response()->json([
             'profile' => new ProfileResource($user->profile),
         ]);
@@ -36,9 +35,9 @@ class ProfileController extends Controller
     {
         $user = $request->user();
         $this->authorize('update', $user->profile);
-        
+
         $profile = $this->profileService->updateFixedFields($user, $request->validated());
-        
+
         return response()->json([
             'profile' => new ProfileResource($profile),
         ]);
@@ -48,15 +47,15 @@ class ProfileController extends Controller
     {
         $user = $request->user();
         $field = ProfileFieldDefinition::where('slug', $slug)->where('is_active', true)->firstOrFail();
-        
+
         $value = $this->profileFieldService->getValue($user->profile, $slug);
-        
-        if (!$value) {
+
+        if (! $value) {
             return response()->json(['value' => null], 200);
         }
-        
+
         $this->authorize('viewField', $value);
-        
+
         return response()->json([
             'value' => new ProfileFieldValueResource($value),
         ]);
@@ -66,10 +65,10 @@ class ProfileController extends Controller
     {
         $user = $request->user();
         $field = ProfileFieldDefinition::where('slug', $slug)->where('is_active', true)->firstOrFail();
-        
+
         // User can always update their own field values
         $value = $this->profileFieldService->setValue($user->profile, $field, $request->input('value'));
-        
+
         return response()->json([
             'value' => new ProfileFieldValueResource($value->load('field', 'selectedOptions')),
         ]);
@@ -79,9 +78,9 @@ class ProfileController extends Controller
     {
         $user = $request->user();
         $field = ProfileFieldDefinition::where('slug', $slug)->where('is_active', true)->firstOrFail();
-        
+
         $deleted = $this->profileFieldService->deleteValue($user->profile, $slug);
-        
+
         return response()->json([
             'deleted' => $deleted,
         ]);
@@ -90,9 +89,9 @@ class ProfileController extends Controller
     public function listFields(Request $request): JsonResponse
     {
         $fields = ProfileFieldDefinition::active()->orderBy('sort_order')->get();
-        
+
         return response()->json([
-            'fields' => \App\Http\Resources\ProfileFieldDefinitionResource::collection($fields),
+            'fields' => ProfileFieldDefinitionResource::collection($fields),
         ]);
     }
 }

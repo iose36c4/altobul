@@ -8,10 +8,13 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 class DiscoveryPreference extends Model
 {
     protected $table = 'discovery_preferences';
+
     protected $primaryKey = 'id';
+
     public $incrementing = false;
+
     protected $keyType = 'string';
-    
+
     protected $fillable = [
         'user_id',
         'field_id',
@@ -25,7 +28,7 @@ class DiscoveryPreference extends Model
         'value_boolean',
         'is_active',
     ];
-    
+
     protected $casts = [
         'value_number' => 'decimal:4',
         'value_number_2' => 'decimal:4',
@@ -42,12 +45,12 @@ class DiscoveryPreference extends Model
     {
         return $this->belongsTo(User::class, 'user_id', 'id');
     }
-    
+
     public function field(): BelongsTo
     {
         return $this->belongsTo(ProfileFieldDefinition::class, 'field_id', 'id');
     }
-    
+
     public function scopeActive($query)
     {
         return $query->where('is_active', true);

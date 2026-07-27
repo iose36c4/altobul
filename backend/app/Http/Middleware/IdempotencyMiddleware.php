@@ -13,20 +13,20 @@ class IdempotencyMiddleware
     public function handle(Request $request, Closure $next): Response
     {
         // Only apply to mutating methods
-        if (!in_array($request->method(), ['POST', 'PUT', 'PATCH', 'DELETE'])) {
+        if (! in_array($request->method(), ['POST', 'PUT', 'PATCH', 'DELETE'])) {
             return $next($request);
         }
 
         $key = $request->header('Idempotency-Key');
-        
-        if (!$key) {
+
+        if (! $key) {
             // Optional: reject requests without idempotency key for mutating operations
             // return response()->json(['error' => 'Idempotency-Key header required'], 400);
             return $next($request);
         }
 
         // Validate key format (UUID)
-        if (!Str::isUuid($key)) {
+        if (! Str::isUuid($key)) {
             return response()->json(['error' => 'Invalid Idempotency-Key format'], 400);
         }
 
@@ -38,6 +38,7 @@ class IdempotencyMiddleware
             $response = response($cached['content'], $cached['status'])
                 ->withHeaders($cached['headers']);
             $response->headers->set('X-Idempotency-Replay', 'true');
+
             return $response;
         }
 

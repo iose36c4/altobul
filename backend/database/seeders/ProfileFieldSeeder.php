@@ -162,7 +162,7 @@ class ProfileFieldSeeder extends Seeder
         $rows = [];
         foreach ($options as $opt) {
             $fieldId = $fieldIds[$opt['field']];
-            if (!$fieldId) {
+            if (! $fieldId) {
                 continue;
             }
             $rows[] = [
@@ -175,7 +175,7 @@ class ProfileFieldSeeder extends Seeder
             ];
         }
 
-        if (!empty($rows)) {
+        if (! empty($rows)) {
             DB::table('profile_field_options')->upsert(
                 $rows,
                 ['field_id', 'value'],

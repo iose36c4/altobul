@@ -167,7 +167,7 @@ class AuthController extends Controller
             ->paginate($request->input('per_page', 20));
 
         return response()->json([
-            'requests' => $requests->map(fn($r) => [
+            'requests' => $requests->map(fn ($r) => [
                 'id' => $r->id,
                 'user' => [
                     'id' => $r->user->id,

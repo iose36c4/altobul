@@ -2,8 +2,8 @@
 
 namespace App\Policies;
 
-use App\Models\User;
 use App\Models\Photo;
+use App\Models\User;
 use App\Services\Authorization\AuthorizationService;
 
 class PhotoPolicy

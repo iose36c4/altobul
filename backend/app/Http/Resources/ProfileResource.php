@@ -12,7 +12,7 @@ class ProfileResource extends JsonResource
     {
         /** @var Profile $profile */
         $profile = $this->resource;
-        
+
         return [
             'user_id' => $profile->user_id,
             'title' => $profile->title,

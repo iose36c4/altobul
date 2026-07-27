@@ -2,8 +2,8 @@
 
 namespace App\Policies;
 
-use App\Models\User;
 use App\Models\Block;
+use App\Models\User;
 use App\Services\Authorization\AuthorizationService;
 
 class BlockPolicy

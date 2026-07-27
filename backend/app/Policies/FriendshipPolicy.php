@@ -2,8 +2,8 @@
 
 namespace App\Policies;
 
-use App\Models\User;
 use App\Models\Friendship;
+use App\Models\User;
 use App\Services\Authorization\AuthorizationService;
 
 class FriendshipPolicy

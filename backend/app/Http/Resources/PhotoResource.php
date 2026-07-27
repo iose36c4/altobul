@@ -12,7 +12,7 @@ class PhotoResource extends JsonResource
     {
         /** @var Photo $photo */
         $photo = $this->resource;
-        
+
         return [
             'id' => $photo->id,
             'url' => $photo->getUrl(),

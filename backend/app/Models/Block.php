@@ -2,22 +2,25 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use Illuminate\Database\Eloquent\Builder;
 
 class Block extends Model
 {
     protected $table = 'blocks';
+
     protected $primaryKey = 'id';
+
     public $incrementing = false;
+
     protected $keyType = 'string';
-    
+
     protected $fillable = [
         'blocker_id',
         'blocked_id',
     ];
-    
+
     protected $casts = [
         'created_at' => 'datetime',
     ];
@@ -26,26 +29,26 @@ class Block extends Model
     {
         return $this->belongsTo(User::class, 'blocker_id', 'id');
     }
-    
+
     public function blocked(): BelongsTo
     {
         return $this->belongsTo(User::class, 'blocked_id', 'id');
     }
-    
+
     public static function existsBetween(User $a, User $b): bool
     {
-        return static::where(function($q) use ($a, $b) {
+        return static::where(function ($q) use ($a, $b) {
             $q->where('blocker_id', $a->id)->where('blocked_id', $b->id);
-        })->orWhere(function($q) use ($a, $b) {
+        })->orWhere(function ($q) use ($a, $b) {
             $q->where('blocker_id', $b->id)->where('blocked_id', $a->id);
         })->exists();
     }
-    
+
     public function scopeByBlocker(Builder $query, string $blockerId): Builder
     {
         return $query->where('blocker_id', $blockerId);
     }
-    
+
     public function scopeByBlocked(Builder $query, string $blockedId): Builder
     {
         return $query->where('blocked_id', $blockedId);

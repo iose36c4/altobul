@@ -2,19 +2,21 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\Relations\HasOne;
-use Illuminate\Database\Eloquent\Relations\HasMany;
-use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use App\Casts\PointCast;
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Profile extends Model
 {
     protected $table = 'profiles';
+
     protected $primaryKey = 'user_id';
+
     public $incrementing = false;
+
     protected $keyType = 'string';
-    
+
     protected $fillable = [
         'user_id',
         'title',
@@ -33,7 +35,7 @@ class Profile extends Model
         'discoverable',
         'geo_zone_id',
     ];
-    
+
     protected $casts = [
         'birth_date' => 'date',
         'location_precision_meters' => 'integer',
@@ -53,12 +55,12 @@ class Profile extends Model
     {
         return $this->belongsTo(User::class, 'user_id', 'id');
     }
-    
+
     public function fieldValues(): HasMany
     {
         return $this->hasMany(ProfileFieldValue::class, 'profile_id', 'user_id');
     }
-    
+
     public function geoZone(): BelongsTo
     {
         return $this->belongsTo(GeoZone::class, 'geo_zone_id', 'id');

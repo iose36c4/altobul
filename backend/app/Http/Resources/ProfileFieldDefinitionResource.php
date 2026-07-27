@@ -12,7 +12,7 @@ class ProfileFieldDefinitionResource extends JsonResource
     {
         /** @var ProfileFieldDefinition $field */
         $field = $this->resource;
-        
+
         return [
             'id' => $field->id,
             'slug' => $field->slug,

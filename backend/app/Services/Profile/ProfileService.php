@@ -10,7 +10,7 @@ class ProfileService
     public function updateFixedFields(User $user, array $data): Profile
     {
         $profile = $user->profile()->firstOrCreate(['user_id' => $user->id]);
-        
+
         // Only allow specific fields to be updated
         $allowedFields = [
             'title', 'description', 'birth_date',
@@ -20,10 +20,10 @@ class ProfileService
             'profile_visibility', 'profile_requires_verified',
             'discoverable', 'geo_zone_id', 'location_precision_meters',
         ];
-        
+
         $filtered = array_intersect_key($data, array_flip($allowedFields));
         $profile->fill($filtered)->save();
-        
+
         return $profile->fresh();
     }
 }
