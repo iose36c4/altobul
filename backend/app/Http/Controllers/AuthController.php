@@ -110,7 +110,11 @@ class AuthController extends Controller
             'external_reference' => ['nullable', 'string', 'max:255'],
         ]);
 
-        $verification = $this->authService->requestVerification($user, $data);
+        $verification = $this->authService->requestVerification(
+            $user,
+            $data['verification_method'],
+            $data['external_reference'] ?? null
+        );
 
         return response()->json([
             'verification' => [

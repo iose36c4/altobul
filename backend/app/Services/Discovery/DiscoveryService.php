@@ -7,6 +7,7 @@ use App\Models\Profile;
 use App\Models\ProfileFieldValue;
 use App\Models\ProfileFieldDefinition;
 use App\Services\Authorization\AuthorizationService;
+use App\Domain\Authorization\VisibilityLevel;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Pagination\LengthAwarePaginator;
 
@@ -103,6 +104,34 @@ class DiscoveryService
                       $sq->where('profiles.profile_requires_verified', true)
                          ->where('users.verification_status', 'verified');
                   });
+            })
+            
+            // 5. PROFILE VISIBILITY - filter by viewer's relationship with target
+            ->where(function($q) use ($viewer) {
+                // Users can always discover PUBLIC profiles
+                $q->where('profiles.profile_visibility', VisibilityLevel::PUBLIC->value)
+                  // MATCH - must have active match
+                  ->orWhere(function($sq) use ($viewer) {
+                      $sq->where('profiles.profile_visibility', VisibilityLevel::MATCH->value)
+                         ->whereExists(function($matchQ) use ($viewer) {
+                             $matchQ->from('user_matches')
+                               ->whereRaw('user_matches.user_a_id = LEAST(?, users.id) AND user_matches.user_b_id = GREATEST(?, users.id)', 
+                                 [$viewer->id, $viewer->id])
+                               ->where('user_matches.status', 'ACTIVE')
+                               ->where('user_matches.expires_at', '>', now());
+                         });
+                  })
+                  // FRIENDS - must have active friendship
+                  ->orWhere(function($sq) use ($viewer) {
+                      $sq->where('profiles.profile_visibility', VisibilityLevel::FRIENDS->value)
+                         ->whereExists(function($friendQ) use ($viewer) {
+                             $friendQ->from('friendships')
+                               ->whereRaw('friendships.user_a_id = LEAST(?, users.id) AND friendships.user_b_id = GREATEST(?, users.id)', 
+                                 [$viewer->id, $viewer->id])
+                               ->where('friendships.status', 'ACTIVE');
+                         });
+                  });
+                  // PRIVATE profiles are NOT discoverable by default
             });
     }
     

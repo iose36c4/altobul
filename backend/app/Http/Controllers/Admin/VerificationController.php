@@ -49,40 +49,40 @@ class VerificationController extends Controller
         ]);
     }
 
-    public function show(VerificationRequest $request): JsonResponse
+    public function show(VerificationRequest $verificationRequest): JsonResponse
     {
-        $request->load('user.profile', 'reviewedBy');
+        $verificationRequest->load('user.profile', 'reviewedBy');
 
         return response()->json([
             'request' => [
-                'id' => $request->id,
+                'id' => $verificationRequest->id,
                 'user' => [
-                    'id' => $request->user->id,
-                    'email' => $request->user->email,
-                    'verification_status' => $request->user->verification_status,
-                    'profile' => $request->user->profile ? [
-                        'title' => $request->user->profile->title,
-                        'description' => $request->user->profile->description,
-                        'birth_date' => $request->user->profile->birth_date?->format('Y-m-d'),
+                    'id' => $verificationRequest->user->id,
+                    'email' => $verificationRequest->user->email,
+                    'verification_status' => $verificationRequest->user->verification_status,
+                    'profile' => $verificationRequest->user->profile ? [
+                        'title' => $verificationRequest->user->profile->title,
+                        'description' => $verificationRequest->user->profile->description,
+                        'birth_date' => $verificationRequest->user->profile->birth_date?->format('Y-m-d'),
                     ] : null,
                 ],
-                'status' => $request->status,
-                'verification_method' => $request->verification_method,
-                'external_reference' => $request->external_reference,
-                'submitted_at' => $request->submitted_at?->toISOString(),
-                'reviewed_at' => $request->reviewed_at?->toISOString(),
-                'reviewed_by' => $request->reviewedBy ? [
-                    'id' => $request->reviewedBy->id,
-                    'email' => $request->reviewedBy->email,
+                'status' => $verificationRequest->status,
+                'verification_method' => $verificationRequest->verification_method,
+                'external_reference' => $verificationRequest->external_reference,
+                'submitted_at' => $verificationRequest->submitted_at?->toISOString(),
+                'reviewed_at' => $verificationRequest->reviewed_at?->toISOString(),
+                'reviewed_by' => $verificationRequest->reviewedBy ? [
+                    'id' => $verificationRequest->reviewedBy->id,
+                    'email' => $verificationRequest->reviewedBy->email,
                 ] : null,
-                'rejection_reason' => $request->rejection_reason,
+                'rejection_reason' => $verificationRequest->rejection_reason,
             ],
         ]);
     }
 
-    public function approve(VerificationRequest $request): JsonResponse
+    public function approve(VerificationRequest $verificationRequest): JsonResponse
     {
-        $reviewed = $this->authService->reviewVerification($request, 'approve');
+        $reviewed = $this->authService->reviewVerification($verificationRequest, 'approve');
 
         return response()->json([
             'request' => [

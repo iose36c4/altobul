@@ -102,6 +102,16 @@ class AuthorizationService implements AuthorizationServiceInterface
         );
     }
 
+    public function canViewProfileFixedField(User $viewer, User $owner, string $fieldName, string $visibility, bool $requiresVerified): AuthorizationResult
+    {
+        return $this->evaluateResourceAccess(
+            $viewer, $owner,
+            VisibilityLevel::tryFrom($visibility) ?? VisibilityLevel::PUBLIC,
+            $requiresVerified,
+            'profile_fixed_field', $fieldName
+        );
+    }
+
     public function canViewPhoto(User $viewer, User $owner, string $photoId): AuthorizationResult
     {
         $photo = Photo::find($photoId);
@@ -412,7 +422,7 @@ class AuthorizationService implements AuthorizationServiceInterface
         return RelationshipStatus::none();
     }
 
-    private function evaluateResourceAccess(
+    public function evaluateResourceAccess(
         User $viewer,
         User $owner,
         VisibilityLevel $visibility,

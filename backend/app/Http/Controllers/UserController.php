@@ -2,19 +2,25 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Resources\PublicProfileResource;
 use App\Http\Resources\UserResource;
 use App\Models\User;
+use App\Services\Authorization\AuthorizationService;
 use Illuminate\Http\JsonResponse;
 
 class UserController extends Controller
 {
     public function show(User $user): JsonResponse
     {
-        \Log::info('UserController@show', ['user_id' => $user->id, 'user' => $user]);
         $this->authorize('view', $user);
-        
+
+        $viewer = request()->user();
+        $profile = $user->profile;
+        $profile->load('fieldValues.field.selectedOptions');
+
         return response()->json([
-            'user' => new UserResource($user->load('profile')),
+            'user' => new UserResource($user),
+            'profile' => new PublicProfileResource($profile, app(AuthorizationService::class), $viewer),
         ]);
     }
 
@@ -25,7 +31,7 @@ class UserController extends Controller
             ->whereNull('deleted_at')
             ->orderBy('sort_order')
             ->get();
-        
+
         return response()->json([
             'photos' => \App\Http\Resources\PhotoResource::collection($photos),
         ]);
@@ -37,7 +43,7 @@ class UserController extends Controller
             ->active()
             ->orderBy('created_at', 'desc')
             ->get();
-        
+
         return response()->json([
             'posts' => \App\Http\Resources\PostResource::collection($posts),
         ]);

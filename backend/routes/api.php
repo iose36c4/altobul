@@ -49,9 +49,9 @@ Route::prefix('admin')->middleware(['auth:sanctum', 'admin'])->group(function ()
 
     // Verification review routes
     Route::get('verification-requests', [\App\Http\Controllers\Admin\VerificationController::class, 'index']);
-    Route::get('verification-requests/{id}', [\App\Http\Controllers\Admin\VerificationController::class, 'show']);
-    Route::post('verification-requests/{id}/approve', [\App\Http\Controllers\Admin\VerificationController::class, 'approve']);
-    Route::post('verification-requests/{id}/reject', [\App\Http\Controllers\Admin\VerificationController::class, 'reject']);
+    Route::get('verification-requests/{verificationRequest}', [\App\Http\Controllers\Admin\VerificationController::class, 'show']);
+    Route::post('verification-requests/{verificationRequest}/approve', [\App\Http\Controllers\Admin\VerificationController::class, 'approve']);
+    Route::post('verification-requests/{verificationRequest}/reject', [\App\Http\Controllers\Admin\VerificationController::class, 'reject']);
 
     // GeoZone routes
     Route::apiResource('geo-zones', \App\Http\Controllers\Admin\GeoZoneController::class)
