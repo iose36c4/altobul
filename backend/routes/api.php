@@ -14,6 +14,8 @@ use App\Http\Controllers\FriendshipRequestController;
 use App\Http\Controllers\InstallController;
 use App\Http\Controllers\MatchController;
 use App\Http\Controllers\MessageController;
+use App\Http\Controllers\PhotoController;
+use App\Http\Controllers\PostController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\TokeController;
 use App\Http\Controllers\UserController;
@@ -135,6 +137,22 @@ Route::prefix('client')
         Route::middleware('auth:sanctum')->group(function () {
             Route::get('conversations/{conversation}/messages', [MessageController::class, 'index']);
             Route::post('conversations/{conversation}/messages', [MessageController::class, 'store']);
+        });
+
+        // Photos
+        Route::middleware('auth:sanctum')->group(function () {
+            Route::get('photos', [PhotoController::class, 'index']);
+            Route::post('photos', [PhotoController::class, 'store']);
+            Route::get('photos/{photo}', [PhotoController::class, 'show']);
+            Route::delete('photos/{photo}', [PhotoController::class, 'destroy']);
+        });
+
+        // Posts
+        Route::middleware('auth:sanctum')->group(function () {
+            Route::get('posts', [PostController::class, 'index']);
+            Route::post('posts', [PostController::class, 'store']);
+            Route::get('posts/{post}', [PostController::class, 'show']);
+            Route::delete('posts/{post}', [PostController::class, 'destroy']);
         });
     });
 

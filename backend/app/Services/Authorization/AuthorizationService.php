@@ -402,12 +402,12 @@ class AuthorizationService implements AuthorizationServiceInterface
             return RelationshipStatus::fromMatch($match);
         }
 
-        // 3. Check Mutual Toke
+        // 3. Check Mutual Toke - properly grouped with status filter
         $mutualTokes = Toke::where(function ($q) use ($a, $b) {
             $q->where('sender_id', $a->id)->where('receiver_id', $b->id);
         })->orWhere(function ($q) use ($a, $b) {
             $q->where('sender_id', $b->id)->where('receiver_id', $a->id);
-        })->where('status', 'ACTIVE')->count();
+        })->where('status', 'ACTIVE')->where('expires_at', '>', now())->count();
 
         if ($mutualTokes === 2) {
             return RelationshipStatus::mutualToke();
@@ -417,6 +417,7 @@ class AuthorizationService implements AuthorizationServiceInterface
         $toke = Toke::where('sender_id', $a->id)
             ->where('receiver_id', $b->id)
             ->where('status', 'ACTIVE')
+            ->where('expires_at', '>', now())
             ->first();
         if ($toke) {
             return RelationshipStatus::toked();
@@ -502,11 +503,26 @@ class AuthorizationService implements AuthorizationServiceInterface
     {
         return match ($resourceType) {
             'photo' => PhotoAccess::where('photo_id', $resourceId)
-                ->where('grantee_id', $grantee->id)->exists(),
+                ->where('grantee_id', $grantee->id)
+                ->whereNull('revoked_at')
+                ->where(function ($q) {
+                    $q->whereNull('expires_at')
+                        ->orWhere('expires_at', '>', now());
+                })->exists(),
             'post' => PostAccess::where('post_id', $resourceId)
-                ->where('grantee_id', $grantee->id)->exists(),
+                ->where('grantee_id', $grantee->id)
+                ->whereNull('revoked_at')
+                ->where(function ($q) {
+                    $q->whereNull('expires_at')
+                        ->orWhere('expires_at', '>', now());
+                })->exists(),
             'profile_field' => ProfileFieldValueAccess::where('field_value_id', $resourceId)
-                ->where('grantee_id', $grantee->id)->exists(),
+                ->where('grantee_id', $grantee->id)
+                ->whereNull('revoked_at')
+                ->where(function ($q) {
+                    $q->whereNull('expires_at')
+                        ->orWhere('expires_at', '>', now());
+                })->exists(),
             default => false,
         };
     }
@@ -515,11 +531,26 @@ class AuthorizationService implements AuthorizationServiceInterface
     {
         return match ($resourceType) {
             'photo' => PhotoAccess::where('photo_id', $resourceId)
-                ->where('grantee_id', $grantee->id)->first(),
+                ->where('grantee_id', $grantee->id)
+                ->whereNull('revoked_at')
+                ->where(function ($q) {
+                    $q->whereNull('expires_at')
+                        ->orWhere('expires_at', '>', now());
+                })->first(),
             'post' => PostAccess::where('post_id', $resourceId)
-                ->where('grantee_id', $grantee->id)->first(),
+                ->where('grantee_id', $grantee->id)
+                ->whereNull('revoked_at')
+                ->where(function ($q) {
+                    $q->whereNull('expires_at')
+                        ->orWhere('expires_at', '>', now());
+                })->first(),
             'profile_field' => ProfileFieldValueAccess::where('field_value_id', $resourceId)
-                ->where('grantee_id', $grantee->id)->first(),
+                ->where('grantee_id', $grantee->id)
+                ->whereNull('revoked_at')
+                ->where(function ($q) {
+                    $q->whereNull('expires_at')
+                        ->orWhere('expires_at', '>', now());
+                })->first(),
             default => null,
         };
     }
