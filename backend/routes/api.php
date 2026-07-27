@@ -7,8 +7,15 @@ use App\Http\Controllers\Admin\GeoZoneController;
 use App\Http\Controllers\Admin\ProfileFieldDefinitionController;
 use App\Http\Controllers\Admin\VerificationController;
 use App\Http\Controllers\AuthController;
+use App\Http\Controllers\BlockController;
+use App\Http\Controllers\ConversationController;
+use App\Http\Controllers\FriendshipController;
+use App\Http\Controllers\FriendshipRequestController;
 use App\Http\Controllers\InstallController;
+use App\Http\Controllers\MatchController;
+use App\Http\Controllers\MessageController;
 use App\Http\Controllers\ProfileController;
+use App\Http\Controllers\TokeController;
 use App\Http\Controllers\UserController;
 use Illuminate\Support\Facades\Route;
 
@@ -78,6 +85,56 @@ Route::prefix('client')
         // User Profile (public view)
         Route::prefix('users')->middleware('auth:sanctum')->group(function () {
             Route::get('{user:id}', [UserController::class, 'show']);
+        });
+
+        // Tokes
+        Route::middleware('auth:sanctum')->group(function () {
+            Route::post('tokes', [TokeController::class, 'store']);
+            Route::get('tokes', [TokeController::class, 'index']);
+            Route::post('tokes/{toke}/consume', [TokeController::class, 'consume']);
+            Route::delete('tokes/{toke}', [TokeController::class, 'cancel']);
+        });
+
+        // Matches
+        Route::middleware('auth:sanctum')->group(function () {
+            Route::get('matches', [MatchController::class, 'index']);
+            Route::post('matches/{match}/convert-to-friendship', [MatchController::class, 'convertToFriendship']);
+        });
+
+        // Friendships
+        Route::middleware('auth:sanctum')->group(function () {
+            Route::get('friendships', [FriendshipController::class, 'index']);
+            Route::post('friendships', [FriendshipController::class, 'store']);
+            Route::delete('friendships/{friendship}', [FriendshipController::class, 'destroy']);
+        });
+
+        // Friendship Requests
+        Route::middleware('auth:sanctum')->group(function () {
+            Route::get('friendship-requests', [FriendshipRequestController::class, 'index']);
+            Route::post('friendship-requests', [FriendshipRequestController::class, 'store']);
+            Route::post('friendship-requests/{friendshipRequest}/accept', [FriendshipRequestController::class, 'accept']);
+            Route::delete('friendship-requests/{friendshipRequest}', [FriendshipRequestController::class, 'destroy']);
+        });
+
+        // Blocks
+        Route::middleware('auth:sanctum')->group(function () {
+            Route::get('blocks', [BlockController::class, 'index']);
+            Route::post('blocks', [BlockController::class, 'store']);
+            Route::delete('blocks/{block}', [BlockController::class, 'destroy']);
+        });
+
+        // Conversations
+        Route::middleware('auth:sanctum')->group(function () {
+            Route::get('conversations', [ConversationController::class, 'index']);
+            Route::post('conversations', [ConversationController::class, 'store']);
+            Route::get('conversations/{conversation}', [ConversationController::class, 'show']);
+            Route::delete('conversations/{conversation}', [ConversationController::class, 'destroy']);
+        });
+
+        // Messages
+        Route::middleware('auth:sanctum')->group(function () {
+            Route::get('conversations/{conversation}/messages', [MessageController::class, 'index']);
+            Route::post('conversations/{conversation}/messages', [MessageController::class, 'store']);
         });
     });
 
