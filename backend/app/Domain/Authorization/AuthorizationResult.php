@@ -19,4 +19,14 @@ readonly class AuthorizationResult
     {
         return new self(false, $reason, $detail);
     }
+
+    public function throwIfDenied(): void
+    {
+        if (! $this->allowed) {
+            throw new \Illuminate\Auth\Access\AuthorizationException(
+                $this->detail ?? 'This action is unauthorized.',
+                $this->reason ? $this->reason->value : 'FORBIDDEN'
+            );
+        }
+    }
 }

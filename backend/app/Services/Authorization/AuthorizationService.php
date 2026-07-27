@@ -152,35 +152,44 @@ class AuthorizationService implements AuthorizationServiceInterface
         );
     }
 
-    public function canSendToke(User $sender, User $receiver): AuthorizationResult
+public function canSendToke(User $sender, User $receiver): AuthorizationResult
     {
         if ($sender->id === $receiver->id) {
             return AuthorizationResult::denied(AuthorizationReason::SELF_ACTION_FORBIDDEN);
         }
-
+        
         if ($this->isBlocked($sender, $receiver)) {
             return AuthorizationResult::denied(AuthorizationReason::BLOCKED);
         }
-
+        
         if ($receiver->status !== 'active') {
             return AuthorizationResult::denied(AuthorizationReason::INACTIVE_USER);
         }
-
+        
         // Check if receiver is in active zone (optional)
-        if (! $this->geoZoneService->isInActiveZone($receiver->profile)) {
+        $inZone = $this->geoZoneService->isInActiveZone($receiver->profile);
+        \Illuminate\Support\Facades\Log::debug('GeoZone check', [
+            'receiver_id' => $receiver->id,
+            'has_profile' => $receiver->profile !== null,
+            'has_location' => $receiver->profile?->location !== null,
+            'location' => $receiver->profile?->location,
+            'inZone' => $inZone,
+        ]);
+        
+        if (! $inZone) {
             return AuthorizationResult::denied(AuthorizationReason::NOT_IN_ACTIVE_ZONE);
         }
-
+        
         // Check for existing active toke
         $existing = Toke::where('sender_id', $sender->id)
             ->where('receiver_id', $receiver->id)
             ->whereIn('status', ['ACTIVE', 'CONSUMED'])
             ->exists();
-
+            
         if ($existing) {
             return AuthorizationResult::denied(AuthorizationReason::INVALID_STATE_TRANSITION);
         }
-
+        
         return AuthorizationResult::allowed();
     }
 

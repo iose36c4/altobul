@@ -11,6 +11,7 @@ class DatabaseSeeder extends Seeder
         $this->call([
             AppConfigSeeder::class,
             ProfileFieldSeeder::class,
+            GlobalZoneSeeder::class,
         ]);
     }
 }

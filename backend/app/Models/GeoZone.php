@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Support\Str;
 
 class GeoZone extends Model
 {
@@ -28,6 +29,17 @@ class GeoZone extends Model
         'created_at' => 'datetime',
         'updated_at' => 'datetime',
     ];
+
+    protected static function boot(): void
+    {
+        parent::boot();
+
+        static::creating(function ($model) {
+            if (!isset($model->attributes['id']) || empty($model->attributes['id'])) {
+                $model->attributes['id'] = (string) Str::uuid();
+            }
+        });
+    }
 
     public function createdBy(): BelongsTo
     {

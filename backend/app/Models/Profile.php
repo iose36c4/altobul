@@ -51,6 +51,8 @@ class Profile extends Model
         'profile_requires_verified' => 'boolean',
     ];
 
+    protected $appends = ['longitude', 'latitude'];
+
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class, 'user_id', 'id');
@@ -64,5 +66,23 @@ class Profile extends Model
     public function geoZone(): BelongsTo
     {
         return $this->belongsTo(GeoZone::class, 'geo_zone_id', 'id');
+    }
+
+    public function getLongitudeAttribute(): ?float
+    {
+        if (! $this->location) {
+            return null;
+        }
+
+        return $this->location[1] ?? null;
+    }
+
+    public function getLatitudeAttribute(): ?float
+    {
+        if (! $this->location) {
+            return null;
+        }
+
+        return $this->location[0] ?? null;
     }
 }
