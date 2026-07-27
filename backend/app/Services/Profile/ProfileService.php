@@ -4,6 +4,7 @@ namespace App\Services\Profile;
 
 use App\Models\Profile;
 use App\Models\User;
+use Illuminate\Support\Facades\DB;
 
 class ProfileService
 {
@@ -23,6 +24,22 @@ class ProfileService
 
         $filtered = array_intersect_key($data, array_flip($allowedFields));
         $profile->fill($filtered)->save();
+
+        return $profile->fresh();
+    }
+
+    public function updateLocation(User $user, array $data): Profile
+    {
+        $profile = $user->profile()->firstOrCreate(['user_id' => $user->id]);
+
+        $lat = $data['latitude'];
+        $lng = $data['longitude'];
+        $precision = $data['precision_meters'] ?? config('app.location_default_precision_meters', 1000);
+
+        $profile->update([
+            'location' => DB::raw("ST_SetSRID(ST_MakePoint({$lng}, {$lat}), 4326)::geography"),
+            'location_precision_meters' => $precision,
+        ]);
 
         return $profile->fresh();
     }

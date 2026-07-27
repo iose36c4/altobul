@@ -78,6 +78,7 @@ Route::prefix('client')
         Route::prefix('profile')->middleware('auth:sanctum')->group(function () {
             Route::get('/', [ProfileController::class, 'show']);
             Route::put('/', [ProfileController::class, 'update']);
+            Route::put('/location', [ProfileController::class, 'updateLocation']);
             Route::get('fields', [ProfileController::class, 'listFields']);
             Route::get('fields/{slug}', [ProfileController::class, 'getField']);
             Route::put('fields/{slug}', [ProfileController::class, 'setField']);

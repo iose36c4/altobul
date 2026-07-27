@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Http\Requests\Profile\UpdateFieldValueRequest;
+use App\Http\Requests\Profile\UpdateLocationRequest;
 use App\Http\Requests\Profile\UpdateProfileRequest;
 use App\Http\Resources\ProfileFieldDefinitionResource;
 use App\Http\Resources\ProfileFieldValueResource;
@@ -37,6 +38,18 @@ class ProfileController extends Controller
         $this->authorize('update', $user->profile);
 
         $profile = $this->profileService->updateFixedFields($user, $request->validated());
+
+        return response()->json([
+            'profile' => new ProfileResource($profile),
+        ]);
+    }
+
+    public function updateLocation(UpdateLocationRequest $request): JsonResponse
+    {
+        $user = $request->user();
+        $this->authorize('update', $user->profile);
+
+        $profile = $this->profileService->updateLocation($user, $request->validated());
 
         return response()->json([
             'profile' => new ProfileResource($profile),
