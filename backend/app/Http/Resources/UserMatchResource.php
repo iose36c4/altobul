@@ -15,7 +15,7 @@ class UserMatchResource extends JsonResource
             'expires_at' => $this->expires_at?->toISOString(),
             'status' => $this->status,
             'ended_at' => $this->ended_at?->toISOString(),
-            'ended_by' => $this->ended_by?->toISOString(),
+            'ended_by' => $this->ended_by,
             'created_at' => $this->created_at?->toISOString(),
             'updated_at' => $this->updated_at?->toISOString(),
         ];

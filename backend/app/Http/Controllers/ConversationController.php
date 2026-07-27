@@ -48,7 +48,7 @@ class ConversationController extends Controller
 
         $recipient = User::find($data['recipient_id']);
 
-        $this->authz->canChat($user, $recipient)->throwIfDenied();
+        $this->authz->canStartConversation($user, $recipient)->throwIfDenied();
 
         $conversation = Conversation::between($user, $recipient)->first();
 
@@ -75,7 +75,7 @@ class ConversationController extends Controller
     {
         $user = request()->user();
 
-        $this->authz->canChat($user, $conversation->userA() === $user ? $conversation->userB : $conversation->userA)->throwIfDenied();
+        $this->authz->canViewConversation($user, $conversation)->throwIfDenied();
 
         return response()->json([
             'conversation' => new ConversationResource($conversation->load(['userA.profile', 'userB.profile', 'messages.sender'])),
@@ -86,14 +86,7 @@ class ConversationController extends Controller
     {
         $user = request()->user();
 
-        $isParticipant = $conversation->user_a_id === $user->id || $conversation->user_b_id === $user->id;
-
-        if (! $isParticipant) {
-            return response()->json([
-                'error' => 'Forbidden',
-                'message' => 'You are not part of this conversation',
-            ], 403);
-        }
+        $this->authz->canAccessConversation($user, $conversation)->throwIfDenied();
 
         if ($conversation->status !== 'ACTIVE') {
             return response()->json([

@@ -2,11 +2,16 @@
 
 namespace App\Models;
 
+use App\Traits\HasUuidPrimaryKey;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class PostAttachment extends Model
 {
+    use HasUuidPrimaryKey;
+
+    public const UPDATED_AT = null;
+
     protected $table = 'post_attachments';
 
     protected $primaryKey = 'id';

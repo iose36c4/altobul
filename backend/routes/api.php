@@ -21,33 +21,30 @@ use App\Http\Controllers\TokeController;
 use App\Http\Controllers\UserController;
 use Illuminate\Support\Facades\Route;
 
-// Test endpoint to verify API key middleware works
-Route::get('test-api-key', function () {
-    return response()->json(['message' => 'API key middleware passed']);
-})->middleware(['api.key:CLIENT']);
+// Auth Routes - require CLIENT API Key
+Route::prefix('auth')
+    ->middleware(['api.key:CLIENT'])
+    ->group(function () {
+        Route::post('register', [AuthController::class, 'register']);
+        Route::post('login', [AuthController::class, 'login']);
+        Route::post('forgot-password', [AuthController::class, 'forgotPassword']);
+        Route::post('reset-password', [AuthController::class, 'resetPassword']);
 
-// Auth Routes - accessible with any valid API Key
-Route::prefix('auth')->group(function () {
-    Route::post('register', [AuthController::class, 'register']);
-    Route::post('login', [AuthController::class, 'login']);
-    Route::post('forgot-password', [AuthController::class, 'forgotPassword']);
-    Route::post('reset-password', [AuthController::class, 'resetPassword']);
+        // Protected auth routes - require both API Key and User Token
+        Route::middleware('auth:sanctum')->group(function () {
+            Route::post('logout', [AuthController::class, 'logout']);
+            Route::post('refresh', [AuthController::class, 'refresh']);
+            Route::get('me', [AuthController::class, 'me']);
+            Route::get('verify-email/{id}/{hash}', [AuthController::class, 'verifyEmail'])
+                ->middleware('signed')
+                ->name('verification.verify');
+            Route::post('resend-verification', [AuthController::class, 'resendVerificationEmail']);
 
-    // Protected auth routes - require both API Key and User Token
-    Route::middleware('auth:sanctum')->group(function () {
-        Route::post('logout', [AuthController::class, 'logout']);
-        Route::post('refresh', [AuthController::class, 'refresh']);
-        Route::get('me', [AuthController::class, 'me']);
-        Route::get('verify-email/{id}/{hash}', [AuthController::class, 'verifyEmail'])
-            ->middleware('signed')
-            ->name('verification.verify');
-        Route::post('resend-verification', [AuthController::class, 'resendVerificationEmail']);
-
-        // Verification Request Routes
-        Route::post('verification/request', [AuthController::class, 'requestVerification']);
-        Route::get('verification/status', [AuthController::class, 'getVerificationStatus']);
+            // Verification Request Routes
+            Route::post('verification/request', [AuthController::class, 'requestVerification']);
+            Route::get('verification/status', [AuthController::class, 'getVerificationStatus']);
+        });
     });
-});
 
 // CLIENT API - Requires CLIENT API Key
 Route::prefix('client')
@@ -226,24 +223,6 @@ Route::prefix('admin')
 // Backend Installer Routes (for initial setup)
 Route::prefix('install')->group(function () {
     Route::get('/', [InstallController::class, 'show']);
-    Route::post('/', [InstallController::class, 'install']);
+    Route::post('/', [InstallController::class, 'install'])->middleware('throttle:install');
     Route::get('status', [InstallController::class, 'status']);
-});
-
-// Legacy routes for backward compatibility (require auth:sanctum only)
-Route::middleware('auth:sanctum')->group(function () {
-    Route::get('me', [AuthController::class, 'me']);
-
-    Route::prefix('profile')->group(function () {
-        Route::get('/', [ProfileController::class, 'show']);
-        Route::put('/', [ProfileController::class, 'update']);
-        Route::get('fields', [ProfileController::class, 'listFields']);
-        Route::get('fields/{slug}', [ProfileController::class, 'getField']);
-        Route::put('fields/{slug}', [ProfileController::class, 'setField']);
-        Route::delete('fields/{slug}', [ProfileController::class, 'deleteField']);
-    });
-
-    Route::prefix('users')->group(function () {
-        Route::get('{user:id}', [UserController::class, 'show']);
-    });
 });

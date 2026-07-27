@@ -32,8 +32,8 @@ class ProfileService
     {
         $profile = $user->profile()->firstOrCreate(['user_id' => $user->id]);
 
-        $lat = $data['latitude'];
-        $lng = $data['longitude'];
+        $lat = (float) $data['latitude'];
+        $lng = (float) $data['longitude'];
         $precision = $data['precision_meters'] ?? config('app.location_default_precision_meters', 1000);
 
         $profile->update([

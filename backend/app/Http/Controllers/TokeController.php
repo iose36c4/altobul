@@ -59,8 +59,8 @@ class TokeController extends Controller
             ->paginate(20);
 
         return response()->json([
-            'sent' => TokeResource::collection($sent),
-            'received' => TokeResource::collection($received),
+            'sent' => TokeResource::collection($sent)->response()->getData(true),
+            'received' => TokeResource::collection($received)->response()->getData(true),
         ]);
     }
 
@@ -88,33 +88,24 @@ class TokeController extends Controller
             ->where('expires_at', '>', now())
             ->exists();
 
-        if ($existingMutual) {
-            $toke->update([
-                'status' => 'CONSUMED',
-                'matched_at' => now(),
-            ]);
+        $toke->update([
+            'status' => 'CONSUMED',
+            'matched_at' => now(),
+        ]);
 
+        if (! UserMatch::between($user, $toke->sender_id)->active()->exists()) {
             UserMatch::create([
                 'user_a_id' => min($user->id, $toke->sender_id),
                 'user_b_id' => max($user->id, $toke->sender_id),
                 'expires_at' => now()->addDays(7),
                 'status' => 'ACTIVE',
             ]);
-
-            return response()->json([
-                'toke' => new TokeResource($toke->fresh()),
-                'match_created' => true,
-            ]);
         }
-
-        $toke->update([
-            'status' => 'CONSUMED',
-            'matched_at' => now(),
-        ]);
 
         return response()->json([
             'toke' => new TokeResource($toke->fresh()),
-            'match_created' => false,
+            'match_created' => true,
+            'mutual_toke' => $existingMutual,
         ]);
     }
 

@@ -21,6 +21,12 @@ trait HasExpiration
             ->where('expires_at', '<=', now());
     }
 
+    public function isExpired(): bool
+    {
+        return $this->expires_at !== null
+            && $this->expires_at->isPast();
+    }
+
     public function getIsExpiredAttribute(): bool
     {
         return $this->expires_at !== null

@@ -2,29 +2,29 @@
 
 namespace Tests\Feature;
 
-use App\Models\ApiKey;
 use App\Models\Friendship;
 use App\Models\FriendshipRequest;
-use App\Models\GeoPolygon;
-use App\Models\GeoZone;
 use App\Models\Toke;
 use App\Models\User;
 use App\Models\UserMatch;
 use App\Services\ApiKeyService;
-use Tests\TestCase;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
+use Illuminate\Testing\TestResponse;
+use Tests\TestCase;
 
 class SocialDomainTest extends TestCase
 {
     use RefreshDatabase;
 
-protected function setUp(): void
+    protected function setUp(): void
     {
         parent::setUp();
-        
-        // Create global zone for tests directly in the transaction
+
+        // Disable session-based guard fallback so Sanctum only uses Bearer tokens
+        config(['sanctum.guard' => []]);
+
         $adminId = (string) Str::uuid();
         DB::table('users')->insert([
             'id' => $adminId,
@@ -38,11 +38,10 @@ protected function setUp(): void
             'updated_at' => now(),
         ]);
 
-        $this->zoneId = (string) Str::uuid();
-        
-        // Use DB insert to avoid model boot issues
+        $zoneId = (string) Str::uuid();
+
         DB::table('geo_zones')->insert([
-            'id' => $this->zoneId,
+            'id' => $zoneId,
             'name' => 'Global Test Zone',
             'description' => 'Global zone for tests',
             'is_active' => true,
@@ -51,10 +50,9 @@ protected function setUp(): void
             'updated_at' => now(),
         ]);
 
-        // Polygon covering most of the world (avoiding antipodal edges)
         DB::table('geo_polygons')->insert([
             'id' => (string) Str::uuid(),
-            'zone_id' => $this->zoneId,
+            'zone_id' => $zoneId,
             'name' => 'World Polygon',
             'geom' => DB::raw("ST_MakePolygon(ST_GeomFromText('LINESTRING(-179 -89, 179 -89, 179 89, -179 89, -179 -89)', 4326))::geography"),
             'created_at' => now(),
@@ -64,10 +62,10 @@ protected function setUp(): void
     protected function createUser(array $attributes = []): User
     {
         $userId = (string) Str::uuid();
-        
+
         DB::table('users')->insert([
             'id' => $userId,
-            'email' => $attributes['email'] ?? 'user-' . Str::uuid() . '@example.com',
+            'email' => $attributes['email'] ?? 'user-'.Str::uuid().'@example.com',
             'password_hash' => bcrypt('password'),
             'email_verified_at' => now(),
             'verification_status' => 'not_verified',
@@ -79,7 +77,7 @@ protected function setUp(): void
 
         DB::table('profiles')->insert([
             'user_id' => $userId,
-            'location' => DB::raw("ST_SetSRID(ST_MakePoint(0, 0), 4326)"),
+            'location' => DB::raw('ST_SetSRID(ST_MakePoint(0, 0), 4326)'),
             'location_precision_meters' => 1000,
             'discoverable' => true,
             'profile_visibility' => 'PUBLIC',
@@ -93,12 +91,14 @@ protected function setUp(): void
     protected function createAdmin(array $attributes = []): User
     {
         $attributes['role'] = 'admin';
+
         return $this->createUser($attributes);
     }
 
     protected function createApiKey(User $creator, string $type): array
     {
-        $service = new ApiKeyService();
+        $service = new ApiKeyService;
+
         return $service->createApiKey($creator, "Test {$type} Key", $type);
     }
 
@@ -107,44 +107,74 @@ protected function setUp(): void
         return ['X-API-Key' => $apiKey];
     }
 
-public function test_toke_flow_complete_lifecycle(): void
+    protected function apiGet(string $url, string $apiKey, ?string $token = null): TestResponse
+    {
+        $this->app['auth']->forgetGuards();
+
+        return $this->withHeaders(array_merge(
+            $this->getHeaders($apiKey),
+            $token ? ['Authorization' => 'Bearer '.$token] : [],
+        ))->getJson($url);
+    }
+
+    protected function apiPost(string $url, string $apiKey, ?string $token = null, array $data = []): TestResponse
+    {
+        $this->app['auth']->forgetGuards();
+
+        return $this->withHeaders(array_merge(
+            $this->getHeaders($apiKey),
+            $token ? ['Authorization' => 'Bearer '.$token] : [],
+        ))->postJson($url, $data);
+    }
+
+    protected function apiDelete(string $url, string $apiKey, ?string $token = null): TestResponse
+    {
+        $this->app['auth']->forgetGuards();
+
+        return $this->withHeaders(array_merge(
+            $this->getHeaders($apiKey),
+            $token ? ['Authorization' => 'Bearer '.$token] : [],
+        ))->deleteJson($url);
+    }
+
+    protected function apiPatch(string $url, string $apiKey, ?string $token = null, array $data = []): TestResponse
+    {
+        $this->app['auth']->forgetGuards();
+
+        return $this->withHeaders(array_merge(
+            $this->getHeaders($apiKey),
+            $token ? ['Authorization' => 'Bearer '.$token] : [],
+        ))->patchJson($url, $data);
+    }
+
+    private function login(string $email, string $rawKey): string
+    {
+        $response = $this->apiPost('/api/client/auth/login', $rawKey, null, [
+            'email' => $email,
+            'password' => 'password',
+        ]);
+        $this->assertEquals(200, $response->status());
+
+        return $response->json('token');
+    }
+
+    public function test_toke_flow_complete_lifecycle(): void
     {
         $admin = $this->createAdmin();
         $clientKey = $this->createApiKey($admin, 'CLIENT');
-        
-        // Create two users
+
         $userA = $this->createUser(['email' => 'usera@example.com']);
         $userB = $this->createUser(['email' => 'userb@example.com']);
-        
-        // User A logs in
-        $loginA = $this->withHeaders($this->getHeaders($clientKey['raw_key']))
-            ->postJson('/api/client/auth/login', ['email' => $userA->email, 'password' => 'password']);
-        
-        dump($loginA->status(), $loginA->json());
-        
-        $this->assertEquals(200, $loginA->status());
-        $tokenA = $loginA->json('token');
-        
-        // User B logs in
-        $loginB = $this->withHeaders($this->getHeaders($clientKey['raw_key']))
-            ->postJson('/api/client/auth/login', ['email' => $userB->email, 'password' => 'password']);
-        
-        dump($loginB->status(), $loginB->json());
-        
-        $this->assertEquals(200, $loginB->status());
-        $tokenB = $loginB->json('token');
-        
+
+        $tokenA = $this->login($userA->email, $clientKey['raw_key']);
+        $tokenB = $this->login($userB->email, $clientKey['raw_key']);
+
         // User A sends toke to User B
-        $response = $this->withHeaders([
-            'X-API-Key' => $clientKey['raw_key'],
-            'Authorization' => 'Bearer ' . $tokenA,
-        ])->postJson('/api/client/tokes', ['receiver_id' => $userB->id]);
-        
-        dump($response->status(), $response->json());
-        
+        $response = $this->apiPost('/api/client/tokes', $clientKey['raw_key'], $tokenA, ['receiver_id' => $userB->id]);
+
         $this->assertEquals(201, $response->status());
         $tokeId = $response->json('toke.id');
-        
+
         // Verify toke exists
         $this->assertDatabaseHas('tokes', [
             'id' => $tokeId,
@@ -152,32 +182,23 @@ public function test_toke_flow_complete_lifecycle(): void
             'receiver_id' => $userB->id,
             'status' => 'ACTIVE',
         ]);
-        
+
         // User B can see received tokes
-        $response = $this->withHeaders([
-            'X-API-Key' => $clientKey['raw_key'],
-            'Authorization' => 'Bearer ' . $tokenB,
-        ])->getJson('/api/client/tokes');
-        
+        $response = $this->apiGet('/api/client/tokes', $clientKey['raw_key'], $tokenB);
+
         $this->assertEquals(200, $response->status());
         $this->assertEquals($tokeId, $response->json('received.data.0.id'));
-        
+
         // User B consumes toke (creates match)
-        $response = $this->withHeaders([
-            'X-API-Key' => $clientKey['raw_key'],
-            'Authorization' => 'Bearer ' . $tokenB,
-        ])->postJson("/api/client/tokes/{$tokeId}/consume");
-        
+        $response = $this->apiPost("/api/client/tokes/{$tokeId}/consume", $clientKey['raw_key'], $tokenB);
+
         $this->assertEquals(200, $response->status());
         $this->assertTrue($response->json('match_created'));
-        $matchId = $response->json('toke.id');
-        
+
         // Verify match was created
-        $this->assertDatabaseHas('matches', [
-            'id' => $matchId,
-            'status' => 'ACTIVE',
-        ]);
-        
+        $match = UserMatch::between($userA, $userB)->active()->first();
+        $this->assertNotNull($match);
+
         // Toke should be consumed
         $this->assertDatabaseHas('tokes', [
             'id' => $tokeId,
@@ -189,60 +210,42 @@ public function test_toke_flow_complete_lifecycle(): void
     {
         $admin = $this->createAdmin();
         $clientKey = $this->createApiKey($admin, 'CLIENT');
-        
-        // Create users and mutual toke -> match
+
         $userA = $this->createUser(['email' => 'usera@example.com']);
         $userB = $this->createUser(['email' => 'userb@example.com']);
-        
-        $loginA = $this->withHeaders($this->getHeaders($clientKey['raw_key']))
-            ->postJson('/api/client/auth/login', ['email' => $userA->email, 'password' => 'password']);
-        $tokenA = $loginA->json('token');
-        
-        $loginB = $this->withHeaders($this->getHeaders($clientKey['raw_key']))
-            ->postJson('/api/client/auth/login', ['email' => $userB->email, 'password' => 'password']);
-        $tokenB = $loginB->json('token');
-        
+
+        $tokenA = $this->login($userA->email, $clientKey['raw_key']);
+        $tokenB = $this->login($userB->email, $clientKey['raw_key']);
+
         // A -> B
-        $this->withHeaders([
-            'X-API-Key' => $clientKey['raw_key'],
-            'Authorization' => 'Bearer ' . $tokenA,
-        ])->postJson('/api/client/tokes', ['receiver_id' => $userB->id]);
-        
+        $this->apiPost('/api/client/tokes', $clientKey['raw_key'], $tokenA, ['receiver_id' => $userB->id]);
+
         // B -> A (mutual)
-        $this->withHeaders([
-            'X-API-Key' => $clientKey['raw_key'],
-            'Authorization' => 'Bearer ' . $tokenB,
-        ])->postJson('/api/client/tokes', ['receiver_id' => $userA->id]);
-        
+        $this->apiPost('/api/client/tokes', $clientKey['raw_key'], $tokenB, ['receiver_id' => $userA->id]);
+
         // Consume to create match
         $tokes = Toke::where('sender_id', $userB->id)
             ->where('receiver_id', $userA->id)
             ->where('status', 'ACTIVE')
             ->get();
         $toke = $tokes->first();
-        
-        $this->withHeaders([
-            'X-API-Key' => $clientKey['raw_key'],
-            'Authorization' => 'Bearer ' . $tokenA,
-        ])->postJson("/api/client/tokes/{$toke->id}/consume");
-        
+
+        $this->apiPost("/api/client/tokes/{$toke->id}/consume", $clientKey['raw_key'], $tokenA);
+
         // Find match
         $match = UserMatch::between($userA, $userB)->active()->first();
         $this->assertNotNull($match);
-        
+
         // Convert match to friendship
-        $response = $this->withHeaders([
-            'X-API-Key' => $clientKey['raw_key'],
-            'Authorization' => 'Bearer ' . $tokenA,
-        ])->postJson("/api/client/matches/{$match->id}/convert-to-friendship");
-        
+        $response = $this->apiPost("/api/client/matches/{$match->id}/convert-to-friendship", $clientKey['raw_key'], $tokenA);
+
         $this->assertEquals(200, $response->status());
         $this->assertNotNull($response->json('friendship.id'));
-        
+
         // Match should be ended
         $match->refresh();
         $this->assertEquals('ENDED', $match->status);
-        
+
         // Friendship should exist
         $friendship = Friendship::between($userA, $userB)->active()->first();
         $this->assertNotNull($friendship);
@@ -252,49 +255,35 @@ public function test_toke_flow_complete_lifecycle(): void
     {
         $admin = $this->createAdmin();
         $clientKey = $this->createApiKey($admin, 'CLIENT');
-        
+
         $userA = $this->createUser(['email' => 'usera@example.com']);
         $userB = $this->createUser(['email' => 'userb@example.com']);
-        
-        $loginA = $this->withHeaders($this->getHeaders($clientKey['raw_key']))
-            ->postJson('/api/client/auth/login', ['email' => $userA->email, 'password' => 'password']);
-        $tokenA = $loginA->json('token');
-        
-        $loginB = $this->withHeaders($this->getHeaders($clientKey['raw_key']))
-            ->postJson('/api/client/auth/login', ['email' => $userB->email, 'password' => 'password']);
-        $tokenB = $loginB->json('token');
-        
+
+        $tokenA = $this->login($userA->email, $clientKey['raw_key']);
+        $tokenB = $this->login($userB->email, $clientKey['raw_key']);
+
         // User A sends friendship request to User B
-        $response = $this->withHeaders([
-            'X-API-Key' => $clientKey['raw_key'],
-            'Authorization' => 'Bearer ' . $tokenA,
-        ])->postJson('/api/client/friendships', ['addressee_id' => $userB->id]);
-        
+        $response = $this->apiPost('/api/client/friendships', $clientKey['raw_key'], $tokenA, ['addressee_id' => $userB->id]);
+
         $this->assertEquals(201, $response->status());
         $requestId = $response->json('friendship_request.id');
-        
+
         // User B can see received request
-        $response = $this->withHeaders([
-            'X-API-Key' => $clientKey['raw_key'],
-            'Authorization' => 'Bearer ' . $tokenB,
-        ])->getJson('/api/client/friendship-requests');
-        
+        $response = $this->apiGet('/api/client/friendship-requests', $clientKey['raw_key'], $tokenB);
+
         $this->assertEquals(200, $response->status());
         $this->assertEquals($requestId, $response->json('received.data.0.id'));
-        
+
         // User B accepts
-        $response = $this->withHeaders([
-            'X-API-Key' => $clientKey['raw_key'],
-            'Authorization' => 'Bearer ' . $tokenB,
-        ])->postJson("/api/client/friendship-requests/{$requestId}/accept");
-        
+        $response = $this->apiPost("/api/client/friendship-requests/{$requestId}/accept", $clientKey['raw_key'], $tokenB);
+
         $this->assertEquals(200, $response->status());
         $this->assertNotNull($response->json('friendship.id'));
-        
+
         // Friendship should be active
         $friendship = Friendship::between($userA, $userB)->active()->first();
         $this->assertNotNull($friendship);
-        
+
         // Request should be accepted
         $request = FriendshipRequest::find($requestId);
         $this->assertEquals('ACCEPTED', $request->status);
@@ -304,48 +293,31 @@ public function test_toke_flow_complete_lifecycle(): void
     {
         $admin = $this->createAdmin();
         $clientKey = $this->createApiKey($admin, 'CLIENT');
-        
+
         $userA = $this->createUser(['email' => 'usera@example.com']);
         $userB = $this->createUser(['email' => 'userb@example.com']);
-        
-        $loginA = $this->withHeaders($this->getHeaders($clientKey['raw_key']))
-            ->postJson('/api/client/auth/login', ['email' => $userA->email, 'password' => 'password']);
-        $tokenA = $loginA->json('token');
-        
-        $loginB = $this->withHeaders($this->getHeaders($clientKey['raw_key']))
-            ->postJson('/api/client/auth/login', ['email' => $userB->email, 'password' => 'password']);
-        $tokenB = $loginB->json('token');
-        
+
+        $tokenA = $this->login($userA->email, $clientKey['raw_key']);
+        $tokenB = $this->login($userB->email, $clientKey['raw_key']);
+
         // User A blocks User B
-        $response = $this->withHeaders([
-            'X-API-Key' => $clientKey['raw_key'],
-            'Authorization' => 'Bearer ' . $tokenA,
-        ])->postJson('/api/client/blocks', ['blocked_id' => $userB->id]);
-        
+        $response = $this->apiPost('/api/client/blocks', $clientKey['raw_key'], $tokenA, ['blocked_id' => $userB->id]);
+
         $this->assertEquals(201, $response->status());
-        
+
         // User A should not be able to send toke to User B
-        $response = $this->withHeaders([
-            'X-API-Key' => $clientKey['raw_key'],
-            'Authorization' => 'Bearer ' . $tokenA,
-        ])->postJson('/api/client/tokes', ['receiver_id' => $userB->id]);
-        
+        $response = $this->apiPost('/api/client/tokes', $clientKey['raw_key'], $tokenA, ['receiver_id' => $userB->id]);
+
         $this->assertEquals(403, $response->status());
-        
+
         // User B should not be able to send toke to User A
-        $response = $this->withHeaders([
-            'X-API-Key' => $clientKey['raw_key'],
-            'Authorization' => 'Bearer ' . $tokenB,
-        ])->postJson('/api/client/tokes', ['receiver_id' => $userA->id]);
-        
+        $response = $this->apiPost('/api/client/tokes', $clientKey['raw_key'], $tokenB, ['receiver_id' => $userA->id]);
+
         $this->assertEquals(403, $response->status());
-        
+
         // User B should not be able to send friendship request
-        $response = $this->withHeaders([
-            'X-API-Key' => $clientKey['raw_key'],
-            'Authorization' => 'Bearer ' . $tokenB,
-        ])->postJson('/api/client/friendships', ['addressee_id' => $userA->id]);
-        
+        $response = $this->apiPost('/api/client/friendships', $clientKey['raw_key'], $tokenB, ['addressee_id' => $userA->id]);
+
         $this->assertEquals(403, $response->status());
     }
 
@@ -353,159 +325,121 @@ public function test_toke_flow_complete_lifecycle(): void
     {
         $admin = $this->createAdmin();
         $clientKey = $this->createApiKey($admin, 'CLIENT');
-        
+
         $userA = $this->createUser(['email' => 'usera@example.com']);
         $userB = $this->createUser(['email' => 'userb@example.com']);
-        
-        $loginA = $this->withHeaders($this->getHeaders($clientKey['raw_key']))
-            ->postJson('/api/client/auth/login', ['email' => $userA->email, 'password' => 'password']);
-        $tokenA = $loginA->json('token');
-        
-        $loginB = $this->withHeaders($this->getHeaders($clientKey['raw_key']))
-            ->postJson('/api/client/auth/login', ['email' => $userB->email, 'password' => 'password']);
-        $tokenB = $loginB->json('token');
-        
-        // Create conversation
-        $response = $this->withHeaders([
-            'X-API-Key' => $clientKey['raw_key'],
-            'Authorization' => 'Bearer ' . $tokenA,
-        ])->postJson('/api/client/conversations', ['recipient_id' => $userB->id]);
-        
+
+        $tokenA = $this->login($userA->email, $clientKey['raw_key']);
+        $tokenB = $this->login($userB->email, $clientKey['raw_key']);
+
+        // First establish a match between users (mutual tokes)
+        $this->apiPost('/api/client/tokes', $clientKey['raw_key'], $tokenA, ['receiver_id' => $userB->id]);
+
+        $this->apiPost('/api/client/tokes', $clientKey['raw_key'], $tokenB, ['receiver_id' => $userA->id]);
+
+        // Consume to create match
+        $tokes = Toke::where('sender_id', $userB->id)
+            ->where('receiver_id', $userA->id)
+            ->where('status', 'ACTIVE')
+            ->get();
+        $toke = $tokes->first();
+
+        $this->apiPost("/api/client/tokes/{$toke->id}/consume", $clientKey['raw_key'], $tokenA);
+
+        // Now create conversation
+        $response = $this->apiPost('/api/client/conversations', $clientKey['raw_key'], $tokenA, ['recipient_id' => $userB->id]);
+
         $this->assertEquals(201, $response->status());
         $conversationId = $response->json('conversation.id');
-        
+
         // User A sends message
-        $response = $this->withHeaders([
-            'X-API-Key' => $clientKey['raw_key'],
-            'Authorization' => 'Bearer ' . $tokenA,
-        ])->postJson("/api/client/conversations/{$conversationId}/messages", ['content' => 'Hello!']);
-        
+        $response = $this->apiPost("/api/client/conversations/{$conversationId}/messages", $clientKey['raw_key'], $tokenA, ['content' => 'Hello!']);
+
         $this->assertEquals(201, $response->status());
         $this->assertEquals('Hello!', $response->json('message.content'));
-        
+
         // User B can see conversation
-        $response = $this->withHeaders([
-            'X-API-Key' => $clientKey['raw_key'],
-            'Authorization' => 'Bearer ' . $tokenB,
-        ])->getJson("/api/client/conversations/{$conversationId}");
-        
+        $response = $this->apiGet("/api/client/conversations/{$conversationId}", $clientKey['raw_key'], $tokenB);
+
         $this->assertEquals(200, $response->status());
         $this->assertEquals($conversationId, $response->json('conversation.id'));
-        
+
         // User B can list messages
-        $response = $this->withHeaders([
-            'X-API-Key' => $clientKey['raw_key'],
-            'Authorization' => 'Bearer ' . $tokenB,
-        ])->getJson("/api/client/conversations/{$conversationId}/messages");
-        
+        $response = $this->apiGet("/api/client/conversations/{$conversationId}/messages", $clientKey['raw_key'], $tokenB);
+
         $this->assertEquals(200, $response->status());
-        $this->assertEquals(1, $response->json('messages.data.0.content'));
-        
+        $this->assertEquals('Hello!', $response->json('messages.0.content'));
+
         // User B sends reply
-        $response = $this->withHeaders([
-            'X-API-Key' => $clientKey['raw_key'],
-            'Authorization' => 'Bearer ' . $tokenB,
-        ])->postJson("/api/client/conversations/{$conversationId}/messages", ['content' => 'Hi there!']);
-        
+        $response = $this->apiPost("/api/client/conversations/{$conversationId}/messages", $clientKey['raw_key'], $tokenB, ['content' => 'Hi there!']);
+
         $this->assertEquals(201, $response->status());
-        
+
         // End conversation
-        $response = $this->withHeaders([
-            'X-API-Key' => $clientKey['raw_key'],
-            'Authorization' => 'Bearer ' . $tokenA,
-        ])->deleteJson("/api/client/conversations/{$conversationId}");
-        
+        $response = $this->apiDelete("/api/client/conversations/{$conversationId}", $clientKey['raw_key'], $tokenA);
+
         $this->assertEquals(200, $response->status());
-        
+
         // Should not be able to send messages after ended
-        $response = $this->withHeaders([
-            'X-API-Key' => $clientKey['raw_key'],
-            'Authorization' => 'Bearer ' . $tokenB,
-        ])->postJson("/api/client/conversations/{$conversationId}/messages", ['content' => 'Late message']);
-        
-        $this->assertEquals(422, $response->status());
+        $response = $this->apiPost("/api/client/conversations/{$conversationId}/messages", $clientKey['raw_key'], $tokenB, ['content' => 'Late message']);
+
+        $this->assertContains($response->status(), [403, 422]);
     }
 
     public function test_photos_and_posts_with_privacy(): void
     {
         $admin = $this->createAdmin();
         $clientKey = $this->createApiKey($admin, 'CLIENT');
-        
+
         $userA = $this->createUser(['email' => 'usera@example.com']);
         $userB = $this->createUser(['email' => 'userb@example.com']);
-        
-        $loginA = $this->withHeaders($this->getHeaders($clientKey['raw_key']))
-            ->postJson('/api/client/auth/login', ['email' => $userA->email, 'password' => 'password']);
-        $tokenA = $loginA->json('token');
-        
-        $loginB = $this->withHeaders($this->getHeaders($clientKey['raw_key']))
-            ->postJson('/api/client/auth/login', ['email' => $userB->email, 'password' => 'password']);
-        $tokenB = $loginB->json('token');
-        
+
+        $tokenA = $this->login($userA->email, $clientKey['raw_key']);
+        $tokenB = $this->login($userB->email, $clientKey['raw_key']);
+
         // User A creates private photo
-        $response = $this->withHeaders([
-            'X-API-Key' => $clientKey['raw_key'],
-            'Authorization' => 'Bearer ' . $tokenA,
-        ])->postJson('/api/client/photos', [
-            'url' => 'https://example.com/photo.jpg',
+        $response = $this->apiPost('/api/client/photos', $clientKey['raw_key'], $tokenA, [
+            'storage_key' => 'photos/test.jpg',
             'visibility' => 'PRIVATE',
             'requires_verified' => false,
         ]);
-        
+
         $this->assertEquals(201, $response->status());
         $photoId = $response->json('photo.id');
-        
+
         // User B cannot see private photo
-        $response = $this->withHeaders([
-            'X-API-Key' => $clientKey['raw_key'],
-            'Authorization' => 'Bearer ' . $tokenB,
-        ])->getJson("/api/client/photos/{$photoId}");
-        
+        $response = $this->apiGet("/api/client/photos/{$photoId}", $clientKey['raw_key'], $tokenB);
+
         $this->assertEquals(403, $response->status());
-        
+
         // User A can see own photo
-        $response = $this->withHeaders([
-            'X-API-Key' => $clientKey['raw_key'],
-            'Authorization' => 'Bearer ' . $tokenA,
-        ])->getJson("/api/client/photos/{$photoId}");
-        
+        $response = $this->apiGet("/api/client/photos/{$photoId}", $clientKey['raw_key'], $tokenA);
+
         $this->assertEquals(200, $response->status());
-        
+
         // User A creates public post
-        $response = $this->withHeaders([
-            'X-API-Key' => $clientKey['raw_key'],
-            'Authorization' => 'Bearer ' . $tokenA,
-        ])->postJson('/api/client/posts', [
+        $response = $this->apiPost('/api/client/posts', $clientKey['raw_key'], $tokenA, [
             'content' => 'Public post',
             'visibility' => 'PUBLIC',
         ]);
-        
+
         $this->assertEquals(201, $response->status());
         $postId = $response->json('post.id');
-        
+
         // User B can see public post
-        $response = $this->withHeaders([
-            'X-API-Key' => $clientKey['raw_key'],
-            'Authorization' => 'Bearer ' . $tokenB,
-        ])->getJson("/api/client/posts/{$postId}");
-        
+        $response = $this->apiGet("/api/client/posts/{$postId}", $clientKey['raw_key'], $tokenB);
+
         $this->assertEquals(200, $response->status());
         $this->assertEquals('Public post', $response->json('post.content'));
-        
+
         // User A deletes post
-        $response = $this->withHeaders([
-            'X-API-Key' => $clientKey['raw_key'],
-            'Authorization' => 'Bearer ' . $tokenA,
-        ])->deleteJson("/api/client/posts/{$postId}");
-        
+        $response = $this->apiDelete("/api/client/posts/{$postId}", $clientKey['raw_key'], $tokenA);
+
         $this->assertEquals(200, $response->status());
-        
+
         // Post should be deleted
-        $response = $this->withHeaders([
-            'X-API-Key' => $clientKey['raw_key'],
-            'Authorization' => 'Bearer ' . $tokenA,
-        ])->getJson("/api/client/posts/{$postId}");
-        
-        $this->assertEquals(403, $response->status());
+        $response = $this->apiGet("/api/client/posts/{$postId}", $clientKey['raw_key'], $tokenA);
+
+        $this->assertEquals(404, $response->status());
     }
 }

@@ -35,7 +35,7 @@ class GeoZone extends Model
         parent::boot();
 
         static::creating(function ($model) {
-            if (!isset($model->attributes['id']) || empty($model->attributes['id'])) {
+            if (! isset($model->attributes['id']) || empty($model->attributes['id'])) {
                 $model->attributes['id'] = (string) Str::uuid();
             }
         });

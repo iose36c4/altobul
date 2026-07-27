@@ -7,6 +7,7 @@ use App\Http\Requests\Auth\LoginRequest;
 use App\Http\Requests\Auth\RegisterRequest;
 use App\Http\Requests\Auth\ResetPasswordRequest;
 use App\Http\Resources\UserResource;
+use App\Models\User;
 use App\Models\VerificationRequest;
 use App\Services\Auth\AuthService;
 use App\Services\Authorization\AuthorizationService;
@@ -73,9 +74,13 @@ class AuthController extends Controller
         return response()->json(['message' => 'Password reset successfully']);
     }
 
-    public function verifyEmail(Request $request): JsonResponse
+    public function verifyEmail(Request $request, string $id, string $hash): JsonResponse
     {
-        $user = $request->user();
+        $user = User::find($id);
+
+        if (! $user || ! hash_equals(sha1($user->email), $hash)) {
+            return response()->json(['error' => 'Invalid verification link'], 404);
+        }
 
         if ($user->hasVerifiedEmail()) {
             return response()->json(['message' => 'Email already verified']);

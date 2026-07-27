@@ -14,17 +14,16 @@ class ConversationPolicy
 
     public function view(User $user, Conversation $conversation): bool
     {
-        return $conversation->user_a_id === $user->id || $conversation->user_b_id === $user->id;
+        return $this->authz->canViewConversation($user, $conversation)->allowed;
     }
 
     public function sendMessage(User $user, Conversation $conversation): bool
     {
-        return $this->authz->canSendMessage($user, $conversation->getOtherUser($user->id))->allowed;
+        return $this->authz->canSendMessage($user, $conversation)->allowed;
     }
 
     public function end(User $user, Conversation $conversation): bool
     {
-        return ($conversation->user_a_id === $user->id || $conversation->user_b_id === $user->id)
-            && $conversation->status === 'ACTIVE';
+        return $this->authz->canAccessConversation($user, $conversation)->allowed;
     }
 }

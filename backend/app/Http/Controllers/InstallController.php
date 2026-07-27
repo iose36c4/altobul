@@ -52,32 +52,37 @@ class InstallController extends Controller
 
     public function install(Request $request): JsonResponse
     {
-        $config = AppConfig::getConfig();
-
-        if ($config->get('installed', false)) {
-            return response()->json([
-                'error' => 'Already installed',
-                'message' => 'Backend is already installed. Installation cannot be repeated.',
-            ], 400);
-        }
-
-        $validator = Validator::make($request->all(), [
-            'email' => ['required', 'email', 'max:255'],
-            'password' => ['required', 'string', 'min:8', 'confirmed'],
-            'app_name' => ['nullable', 'string', 'max:100'],
-        ]);
-
-        if ($validator->fails()) {
-            return response()->json([
-                'error' => 'Validation failed',
-                'errors' => $validator->errors(),
-            ], 422);
-        }
-
         try {
             DB::beginTransaction();
 
-            // Create first admin user
+            // Advisory lock ensures only one installation can proceed at a time
+            DB::select('SELECT pg_advisory_xact_lock(1)');
+
+            $config = AppConfig::getConfig();
+            if (($config->get('installed') ?? false)) {
+                DB::rollBack();
+
+                return response()->json([
+                    'error' => 'Already installed',
+                    'message' => 'Backend is already installed. Installation cannot be repeated.',
+                ], 400);
+            }
+
+            $validator = Validator::make($request->all(), [
+                'email' => ['required', 'email', 'max:255'],
+                'password' => ['required', 'string', 'min:8', 'confirmed'],
+                'app_name' => ['nullable', 'string', 'max:100'],
+            ]);
+
+            if ($validator->fails()) {
+                DB::rollBack();
+
+                return response()->json([
+                    'error' => 'Validation failed',
+                    'errors' => $validator->errors(),
+                ], 422);
+            }
+
             $userId = (string) Str::uuid();
 
             DB::table('users')->insert([
@@ -104,11 +109,9 @@ class InstallController extends Controller
 
             $admin = User::find($userId);
 
-            // Create default API keys
             $clientKey = $this->apiKeyService->createApiKey($admin, 'Client Production', 'CLIENT');
             $adminKey = $this->apiKeyService->createApiKey($admin, 'Admin Production', 'ADMIN');
 
-            // Mark as installed
             $config->set('installed', true);
             $config->set('installed_at', now()->toISOString());
             $config->set('first_admin_id', $admin->id);
@@ -139,12 +142,12 @@ class InstallController extends Controller
                 ],
             ], 201);
 
-        } catch (\Throwable $e) {
+        } catch (\Throwable) {
             DB::rollBack();
 
             return response()->json([
                 'error' => 'Installation failed',
-                'message' => $e->getMessage(),
+                'message' => 'An unexpected error occurred during installation. Please check server logs.',
             ], 500);
         }
     }

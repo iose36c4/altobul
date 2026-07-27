@@ -4,7 +4,6 @@ namespace App\Services\Geo;
 
 use App\Models\GeoZone;
 use App\Models\Profile;
-use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
@@ -13,7 +12,10 @@ class GeoZoneService
     public function isInActiveZone(?Profile $profile): bool
     {
         if (! $profile || ! $profile->location) {
-            Log::debug('GeoZoneService: profile or location missing', ['profile' => $profile?->id]);
+            Log::debug('GeoZoneService: profile or location missing', [
+                'profile_id' => $profile?->getKey(),
+            ]);
+
             return false;
         }
 
@@ -23,16 +25,15 @@ class GeoZoneService
                 INNER JOIN geo_polygons gp ON gz.id = gp.zone_id
                 WHERE gz.is_active = true
                 AND ST_Within(
-                    ST_SetSRID(ST_MakePoint(ST_X($1::geometry), ST_Y($1::geometry)), 4326)::geometry,
+                    (SELECT location FROM profiles WHERE user_id = ?)::geometry,
                     gp.geom::geometry
                 )
             ) as exists',
-            [$profile->location]
+            [$profile->getKey()]
         );
 
         Log::debug('GeoZoneService: isInActiveZone', [
-            'profile_id' => $profile->id,
-            'location' => $profile->location,
+            'profile_id' => $profile->getKey(),
             'result' => $result->exists ?? false,
         ]);
 
@@ -50,11 +51,11 @@ class GeoZoneService
             INNER JOIN geo_polygons gp ON gz.id = gp.zone_id
             WHERE gz.is_active = true
             AND ST_Within(
-                ST_SetSRID(ST_MakePoint(ST_X($1::geometry), ST_Y($1::geometry)), 4326)::geometry,
+                (SELECT location FROM profiles WHERE user_id = ?)::geometry,
                 gp.geom::geometry
             )
             LIMIT 1',
-            [$profile->location]
+            [$profile->getKey()]
         );
     }
 

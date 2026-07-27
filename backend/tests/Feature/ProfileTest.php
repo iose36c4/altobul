@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Models\Profile;
 use App\Models\User;
+use App\Services\ApiKeyService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
@@ -12,6 +13,37 @@ use Tests\TestCase;
 class ProfileTest extends TestCase
 {
     use RefreshDatabase;
+
+    protected string $clientKey;
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        $admin = $this->createAdmin();
+        $service = new ApiKeyService;
+        $result = $service->createApiKey($admin, 'Test Client Key', 'CLIENT');
+        $this->clientKey = $result['raw_key'];
+    }
+
+    protected function createAdmin(array $attributes = []): User
+    {
+        $userId = (string) Str::uuid();
+
+        DB::table('users')->insert([
+            'id' => $userId,
+            'email' => $attributes['email'] ?? 'admin-'.Str::uuid().'@example.com',
+            'password_hash' => bcrypt('password'),
+            'email_verified_at' => now(),
+            'verification_status' => 'not_verified',
+            'status' => 'active',
+            'role' => 'admin',
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        return User::find($userId);
+    }
 
     protected function createUser(array $attributes = []): User
     {
@@ -48,8 +80,9 @@ class ProfileTest extends TestCase
         $user = $this->createUser();
         $this->createProfile($user);
 
-        $response = $this->actingAs($user, 'sanctum')
-            ->getJson('/api/profile');
+        $response = $this->withHeader('X-API-Key', $this->clientKey)
+            ->actingAs($user, 'sanctum')
+            ->getJson('/api/client/profile');
 
         $response->assertStatus(200)
             ->assertJsonStructure([
@@ -72,8 +105,9 @@ class ProfileTest extends TestCase
         $user = $this->createUser();
         $this->createProfile($user);
 
-        $response = $this->actingAs($user, 'sanctum')
-            ->putJson('/api/profile', [
+        $response = $this->withHeader('X-API-Key', $this->clientKey)
+            ->actingAs($user, 'sanctum')
+            ->putJson('/api/client/profile', [
                 'title' => 'Software Developer',
                 'description' => 'I love coding',
                 'profile_visibility' => 'FRIENDS',
@@ -98,8 +132,9 @@ class ProfileTest extends TestCase
 
         $this->createProfile($user1);
 
-        $response = $this->actingAs($user2, 'sanctum')
-            ->putJson('/api/profile', [
+        $response = $this->withHeader('X-API-Key', $this->clientKey)
+            ->actingAs($user2, 'sanctum')
+            ->putJson('/api/client/profile', [
                 'title' => 'Hacker',
             ]);
 
@@ -118,8 +153,9 @@ class ProfileTest extends TestCase
         ]);
 
         // Viewer without relationship cannot see private profile
-        $response = $this->actingAs($viewer, 'sanctum')
-            ->getJson("/api/users/{$owner->id}");
+        $response = $this->withHeader('X-API-Key', $this->clientKey)
+            ->actingAs($viewer, 'sanctum')
+            ->getJson("/api/client/users/{$owner->id}");
 
         $response->assertStatus(403);
     }

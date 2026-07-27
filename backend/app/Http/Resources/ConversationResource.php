@@ -14,7 +14,7 @@ class ConversationResource extends JsonResource
             'user_b' => new UserResource($this->whenLoaded('userB')),
             'status' => $this->status,
             'ended_at' => $this->ended_at?->toISOString(),
-            'ended_by' => $this->ended_by?->toISOString(),
+            'ended_by' => $this->ended_by,
             'last_message' => new MessageResource($this->whenLoaded('lastMessage')),
             'created_at' => $this->created_at?->toISOString(),
             'updated_at' => $this->updated_at?->toISOString(),

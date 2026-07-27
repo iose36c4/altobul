@@ -3,12 +3,13 @@
 namespace App\Models;
 
 use App\Traits\HasExpiration;
+use App\Traits\HasUuidPrimaryKey;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class Friendship extends Model
 {
-    use HasExpiration;
+    use HasExpiration, HasUuidPrimaryKey;
 
     protected $table = 'friendships';
 
@@ -17,6 +18,8 @@ class Friendship extends Model
     public $incrementing = false;
 
     protected $keyType = 'string';
+
+    public const UPDATED_AT = null;
 
     protected $fillable = [
         'user_a_id',

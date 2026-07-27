@@ -5,6 +5,7 @@ namespace App\Contracts;
 use App\Domain\Authorization\AuthorizationResult;
 use App\Domain\Authorization\VisibilityLevel;
 use App\Domain\Relationship\RelationshipStatus;
+use App\Models\Conversation;
 use App\Models\User;
 
 interface AuthorizationServiceInterface
@@ -48,7 +49,13 @@ interface AuthorizationServiceInterface
 
     public function canChat(User $a, User $b): AuthorizationResult;
 
-    public function canSendMessage(User $sender, User $receiver): AuthorizationResult;
+    public function canStartConversation(User $a, User $b): AuthorizationResult;
+
+    public function canSendMessage(User $sender, Conversation $conversation): AuthorizationResult;
+
+    public function canViewConversation(User $viewer, Conversation $conversation): AuthorizationResult;
+
+    public function canAccessConversation(User $user, Conversation $conversation): AuthorizationResult;
 
     public function canGrantAccess(User $owner, User $grantee, string $resourceType, string $resourceId): AuthorizationResult;
 

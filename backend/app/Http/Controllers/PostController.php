@@ -4,7 +4,6 @@ namespace App\Http\Controllers;
 
 use App\Http\Resources\PostResource;
 use App\Models\Post;
-use App\Models\PostAttachment;
 use App\Services\Authorization\AuthorizationService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -44,44 +43,42 @@ class PostController extends Controller
             'content' => ['required', 'string', 'max:5000'],
             'visibility' => ['required', 'string', 'in:PUBLIC,MATCH,FRIENDS,PRIVATE'],
             'requires_verified' => ['boolean'],
-            'attachments' => ['nullable', 'array'],
-            'attachments.*.file_url' => ['required', 'string', 'url'],
-            'attachments.*.type' => ['required', 'string', 'in:image,video,audio,document'],
-            'expires_at' => ['nullable', 'date'],
+            'expires_at' => ['nullable', 'date', 'after:now', 'before_or_equal:'.now()->addDay()->toDateTimeString()],
         ]);
+
+        $expiresAt = isset($data['expires_at'])
+            ? min(now()->addDay()->timestamp, strtotime($data['expires_at']))
+            : now()->addDay()->timestamp;
 
         $post = Post::create([
             'user_id' => $user->id,
-            'content' => $data['content'],
+            'content_md' => $data['content'],
             'visibility' => $data['visibility'],
             'requires_verified' => $data['requires_verified'] ?? false,
-            'expires_at' => $data['expires_at'] ?? now()->addHours(24),
+            'expires_at' => now()->setTimestamp($expiresAt),
             'status' => 'ACTIVE',
         ]);
 
-        if (! empty($data['attachments'])) {
-            foreach ($data['attachments'] as $attachment) {
-                PostAttachment::create([
-                    'post_id' => $post->id,
-                    'file_url' => $attachment['file_url'],
-                    'type' => $attachment['type'],
-                ]);
-            }
-        }
-
         return response()->json([
-            'post' => new PostResource($post->load(['user', 'attachments'])),
+            'post' => new PostResource($post->load(['user', 'attachment'])),
         ], 201);
     }
 
     public function show(Post $post): JsonResponse
     {
+        if ($post->status !== 'ACTIVE') {
+            return response()->json([
+                'error' => 'Not found',
+                'message' => 'This post is no longer available',
+            ], 404);
+        }
+
         $user = request()->user();
 
         $this->authz->canViewPost($user, $post->user, $post->id)->throwIfDenied();
 
         return response()->json([
-            'post' => new PostResource($post->load(['user', 'attachments'])),
+            'post' => new PostResource($post->load(['user', 'attachment'])),
         ]);
     }
 

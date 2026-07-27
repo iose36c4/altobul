@@ -2,8 +2,11 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Resources\FriendshipRequestResource;
 use App\Http\Resources\FriendshipResource;
 use App\Models\Friendship;
+use App\Models\FriendshipRequest;
+use App\Models\User;
 use App\Services\Authorization\AuthorizationService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -37,6 +40,30 @@ class FriendshipController extends Controller
         ]);
     }
 
+    public function store(Request $request): JsonResponse
+    {
+        $user = $request->user();
+
+        $data = $request->validate([
+            'addressee_id' => ['required', 'uuid', 'exists:users,id'],
+        ]);
+
+        $addressee = User::findOrFail($data['addressee_id']);
+
+        $this->authz->canRequestFriendship($user, $addressee)->throwIfDenied();
+
+        $friendshipRequest = FriendshipRequest::create([
+            'requester_id' => $user->id,
+            'addressee_id' => $addressee->id,
+            'status' => 'PENDING',
+            'expires_at' => now()->addDays(7),
+        ]);
+
+        return response()->json([
+            'friendship_request' => new FriendshipRequestResource($friendshipRequest->load(['requester.profile', 'addressee.profile'])),
+        ], 201);
+    }
+
     public function destroy(Friendship $friendship): JsonResponse
     {
         $user = request()->user();
@@ -57,7 +84,8 @@ class FriendshipController extends Controller
             ], 422);
         }
 
-        $this->authz->canEndFriendship($user, $friendship->userA() === $user ? $friendship->userB : $friendship->userA)->throwIfDenied();
+        $otherUser = $friendship->user_a_id === $user->id ? $friendship->userB : $friendship->userA;
+        $this->authz->canEndFriendship($user, $otherUser)->throwIfDenied();
 
         $friendship->update(['status' => 'ENDED']);
 

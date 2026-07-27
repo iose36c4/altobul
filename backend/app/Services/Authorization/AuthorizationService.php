@@ -23,6 +23,7 @@ use App\Models\User;
 use App\Models\UserMatch;
 use App\Services\Config\ConfigService;
 use App\Services\Geo\GeoZoneService;
+use Illuminate\Support\Facades\Log;
 
 class AuthorizationService implements AuthorizationServiceInterface
 {
@@ -99,7 +100,8 @@ class AuthorizationService implements AuthorizationServiceInterface
 
         return $this->evaluateResourceAccess(
             $viewer, $owner,
-            $visibility, $requiresVerified,
+            is_string($visibility) ? (VisibilityLevel::tryFrom($visibility) ?? VisibilityLevel::PUBLIC) : $visibility,
+            $requiresVerified,
             'profile_field', $fieldValue->id
         );
     }
@@ -127,7 +129,7 @@ class AuthorizationService implements AuthorizationServiceInterface
 
         return $this->evaluateResourceAccess(
             $viewer, $owner,
-            $photo->visibility,
+            is_string($photo->visibility) ? (VisibilityLevel::tryFrom($photo->visibility) ?? VisibilityLevel::PUBLIC) : $photo->visibility,
             $photo->requires_verified,
             'photo', $photoId
         );
@@ -146,50 +148,50 @@ class AuthorizationService implements AuthorizationServiceInterface
 
         return $this->evaluateResourceAccess(
             $viewer, $owner,
-            $post->visibility,
+            is_string($post->visibility) ? (VisibilityLevel::tryFrom($post->visibility) ?? VisibilityLevel::PUBLIC) : $post->visibility,
             $post->requires_verified,
             'post', $postId
         );
     }
 
-public function canSendToke(User $sender, User $receiver): AuthorizationResult
+    public function canSendToke(User $sender, User $receiver): AuthorizationResult
     {
         if ($sender->id === $receiver->id) {
             return AuthorizationResult::denied(AuthorizationReason::SELF_ACTION_FORBIDDEN);
         }
-        
+
         if ($this->isBlocked($sender, $receiver)) {
             return AuthorizationResult::denied(AuthorizationReason::BLOCKED);
         }
-        
+
         if ($receiver->status !== 'active') {
             return AuthorizationResult::denied(AuthorizationReason::INACTIVE_USER);
         }
-        
+
         // Check if receiver is in active zone (optional)
         $inZone = $this->geoZoneService->isInActiveZone($receiver->profile);
-        \Illuminate\Support\Facades\Log::debug('GeoZone check', [
+        Log::debug('GeoZone check', [
             'receiver_id' => $receiver->id,
             'has_profile' => $receiver->profile !== null,
             'has_location' => $receiver->profile?->location !== null,
             'location' => $receiver->profile?->location,
             'inZone' => $inZone,
         ]);
-        
+
         if (! $inZone) {
             return AuthorizationResult::denied(AuthorizationReason::NOT_IN_ACTIVE_ZONE);
         }
-        
+
         // Check for existing active toke
         $existing = Toke::where('sender_id', $sender->id)
             ->where('receiver_id', $receiver->id)
             ->whereIn('status', ['ACTIVE', 'CONSUMED'])
             ->exists();
-            
+
         if ($existing) {
             return AuthorizationResult::denied(AuthorizationReason::INVALID_STATE_TRANSITION);
         }
-        
+
         return AuthorizationResult::allowed();
     }
 
@@ -305,6 +307,21 @@ public function canSendToke(User $sender, User $receiver): AuthorizationResult
 
     public function canChat(User $a, User $b): AuthorizationResult
     {
+        $result = $this->canStartConversation($a, $b);
+        if (! $result->allowed) {
+            return $result;
+        }
+
+        $conv = Conversation::between($a, $b)->first();
+        if (! $conv || ! $conv->isActive()) {
+            return AuthorizationResult::denied(AuthorizationReason::CONVERSATION_ENDED);
+        }
+
+        return AuthorizationResult::allowed();
+    }
+
+    public function canStartConversation(User $a, User $b): AuthorizationResult
+    {
         if ($this->isBlocked($a, $b)) {
             return AuthorizationResult::denied(AuthorizationReason::BLOCKED);
         }
@@ -318,17 +335,35 @@ public function canSendToke(User $sender, User $receiver): AuthorizationResult
             return AuthorizationResult::denied(AuthorizationReason::FRIENDSHIP_ENDED);
         }
 
-        $conv = Conversation::between($a, $b)->first();
-        if (! $conv || ! $conv->isActive()) {
-            return AuthorizationResult::denied(AuthorizationReason::CONVERSATION_ENDED);
-        }
-
         return AuthorizationResult::allowed();
     }
 
-    public function canSendMessage(User $sender, User $receiver): AuthorizationResult
+    public function canSendMessage(User $sender, Conversation $conversation): AuthorizationResult
     {
-        return $this->canChat($sender, $receiver);
+        return $this->canAccessConversation($sender, $conversation);
+    }
+
+    public function canViewConversation(User $viewer, Conversation $conversation): AuthorizationResult
+    {
+        return $this->canAccessConversation($viewer, $conversation);
+    }
+
+    public function canAccessConversation(User $user, Conversation $conversation): AuthorizationResult
+    {
+        if (! $conversation->hasParticipant($user)) {
+            return AuthorizationResult::denied(AuthorizationReason::UNAUTHORIZED);
+        }
+
+        if (! $conversation->isActive()) {
+            return AuthorizationResult::denied(AuthorizationReason::CONVERSATION_ENDED);
+        }
+
+        $other = $conversation->getOtherUser($user);
+        if (! $other) {
+            return AuthorizationResult::denied(AuthorizationReason::UNAUTHORIZED);
+        }
+
+        return $this->canStartConversation($user, $other);
     }
 
     public function canGrantAccess(User $owner, User $grantee, string $resourceType, string $resourceId): AuthorizationResult
@@ -414,8 +449,9 @@ public function canSendToke(User $sender, User $receiver): AuthorizationResult
         // 3. Check Mutual Toke - properly grouped with status filter
         $mutualTokes = Toke::where(function ($q) use ($a, $b) {
             $q->where('sender_id', $a->id)->where('receiver_id', $b->id);
-        })->orWhere(function ($q) use ($a, $b) {
-            $q->where('sender_id', $b->id)->where('receiver_id', $a->id);
+            $q->orWhere(function ($q2) use ($a, $b) {
+                $q2->where('sender_id', $b->id)->where('receiver_id', $a->id);
+            });
         })->where('status', 'ACTIVE')->where('expires_at', '>', now())->count();
 
         if ($mutualTokes === 2) {
@@ -457,7 +493,7 @@ public function canSendToke(User $sender, User $receiver): AuthorizationResult
         }
 
         // 1. BLOCK - absolute override
-        if ($this->isBlocked($viewer, $owner) || $this->isBlocked($owner, $viewer)) {
+        if ($this->isBlocked($viewer, $owner)) {
             return AuthorizationResult::denied(AuthorizationReason::BLOCKED);
         }
 
@@ -476,21 +512,30 @@ public function canSendToke(User $sender, User $receiver): AuthorizationResult
 
         // 4. RELATIONSHIP vs VISIBILITY
         $relationship = $this->getRelationshipStatus($viewer, $owner);
+
+        // 5. EXPLICIT GRANT (only for PRIVATE - checked before visibility gate)
+        if ($visibility === VisibilityLevel::PRIVATE) {
+            $hasGrant = $this->hasActiveGrant($viewer, $resourceType, $resourceId);
+            if ($hasGrant) {
+                // Grant holder bypasses visibility check
+                if ($requiresVerified && ! $viewer->isVerified()) {
+                    return AuthorizationResult::denied(AuthorizationReason::VERIFICATION_REQUIRED);
+                }
+
+                return AuthorizationResult::allowed();
+            }
+
+            return AuthorizationResult::denied(AuthorizationReason::NO_EXPLICIT_GRANT);
+        }
+
+        // 6. VISIBILITY GATE (PUBLIC, MATCH, FRIENDS)
         if (! $visibility->satisfies($relationship->level)) {
             return AuthorizationResult::denied(AuthorizationReason::INSUFFICIENT_RELATIONSHIP);
         }
 
-        // 5. VERIFICATION REQUIREMENT
+        // 7. VERIFICATION REQUIREMENT
         if ($requiresVerified && ! $viewer->isVerified()) {
             return AuthorizationResult::denied(AuthorizationReason::VERIFICATION_REQUIRED);
-        }
-
-        // 6. EXPLICIT GRANT (only for PRIVATE)
-        if ($visibility === VisibilityLevel::PRIVATE) {
-            $hasGrant = $this->hasActiveGrant($viewer, $resourceType, $resourceId);
-            if (! $hasGrant) {
-                return AuthorizationResult::denied(AuthorizationReason::NO_EXPLICIT_GRANT);
-            }
         }
 
         return AuthorizationResult::allowed();

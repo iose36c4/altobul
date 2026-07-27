@@ -2,12 +2,16 @@
 
 namespace App\Models;
 
+use App\Traits\HasUuidPrimaryKey;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 
 class Conversation extends Model
 {
+    use HasUuidPrimaryKey;
+
     protected $table = 'conversations';
 
     protected $primaryKey = 'id';
@@ -53,6 +57,12 @@ class Conversation extends Model
             ->orderBy('created_at', 'desc');
     }
 
+    public function lastMessage(): HasOne
+    {
+        return $this->hasOne(Message::class, 'conversation_id', 'id')
+            ->latestOfMany('created_at');
+    }
+
     public function scopeActive($query)
     {
         return $query->where('status', 'ACTIVE');
@@ -60,7 +70,9 @@ class Conversation extends Model
 
     public function scopeBetween($query, $userA, $userB)
     {
-        $ids = [$userA, $userB];
+        $idA = $userA instanceof User ? $userA->id : $userA;
+        $idB = $userB instanceof User ? $userB->id : $userB;
+        $ids = [$idA, $idB];
         sort($ids);
 
         return $query->where('user_a_id', $ids[0])
@@ -70,5 +82,27 @@ class Conversation extends Model
     public function isActive(): bool
     {
         return $this->status === 'ACTIVE';
+    }
+
+    public function hasParticipant(User|string $user): bool
+    {
+        $userId = $user instanceof User ? $user->id : $user;
+
+        return $this->user_a_id === $userId || $this->user_b_id === $userId;
+    }
+
+    public function getOtherUser(User|string $user): ?User
+    {
+        $userId = $user instanceof User ? $user->id : $user;
+
+        if ($this->user_a_id === $userId) {
+            return $this->userB;
+        }
+
+        if ($this->user_b_id === $userId) {
+            return $this->userA;
+        }
+
+        return null;
     }
 }

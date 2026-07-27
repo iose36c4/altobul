@@ -107,12 +107,15 @@ class InstallTest extends TestCase
         $clientKey = $installResponse->json('api_keys.client.raw_key');
         $adminKey = $installResponse->json('api_keys.admin.raw_key');
 
-        // Test client key on client test endpoint
+        // Test client key on client login endpoint
         $response = $this->withHeader('X-API-Key', $clientKey)
-            ->getJson('/api/test-api-key');
+            ->postJson('/api/client/auth/login', [
+                'email' => 'admin@example.com',
+                'password' => 'password123',
+            ]);
         $this->assertEquals(200, $response->status());
 
-        // Test admin key on admin test endpoint - login should work with correct credentials
+        // Test admin key on admin login endpoint
         $response = $this->withHeader('X-API-Key', $adminKey)
             ->postJson('/api/admin/auth/login', [
                 'email' => 'admin@example.com',

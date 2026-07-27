@@ -33,8 +33,8 @@ class FriendshipRequestController extends Controller
             ->paginate(20);
 
         return response()->json([
-            'sent' => FriendshipRequestResource::collection($sent),
-            'received' => FriendshipRequestResource::collection($received),
+            'sent' => FriendshipRequestResource::collection($sent)->response()->getData(true),
+            'received' => FriendshipRequestResource::collection($received)->response()->getData(true),
         ]);
     }
 

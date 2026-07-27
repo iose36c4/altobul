@@ -3,13 +3,14 @@
 namespace App\Models;
 
 use App\Traits\HasExpiration;
+use App\Traits\HasUuidPrimaryKey;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Photo extends Model
 {
-    use HasExpiration;
+    use HasExpiration, HasUuidPrimaryKey;
 
     protected $table = 'photos';
 

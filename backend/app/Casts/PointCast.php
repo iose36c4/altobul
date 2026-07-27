@@ -16,7 +16,36 @@ class PointCast implements CastsAttributes
             return $value;
         }
 
-        return $value;
+        if (! is_string($value) || strlen($value) < 50) {
+            return null;
+        }
+
+        $binary = hex2bin($value);
+        if ($binary === false) {
+            return null;
+        }
+
+        $byteOrder = ord($binary[0]);
+        $isLittleEndian = $byteOrder === 1;
+        $packFormat = $isLittleEndian ? 'E' : 'N';
+
+        $type = unpack($isLittleEndian ? 'V' : 'N', substr($binary, 1, 4))[1];
+        $hasSrid = ($type & 0x20000000) !== 0;
+        $baseType = $type & 0x0FFFFFFF;
+
+        if ($baseType !== 1) {
+            return null;
+        }
+
+        $offset = 5;
+        if ($hasSrid) {
+            $offset += 4;
+        }
+
+        $lng = unpack($packFormat, substr($binary, $offset, 8))[1];
+        $lat = unpack($packFormat, substr($binary, $offset + 8, 8))[1];
+
+        return [$lat, $lng];
     }
 
     public function set($model, string $key, $value, array $attributes)

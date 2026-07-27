@@ -2,12 +2,15 @@
 
 namespace App\Models;
 
+use App\Traits\HasUuidPrimaryKey;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class Block extends Model
 {
+    use HasUuidPrimaryKey;
+
     protected $table = 'blocks';
 
     protected $primaryKey = 'id';
@@ -15,6 +18,8 @@ class Block extends Model
     public $incrementing = false;
 
     protected $keyType = 'string';
+
+    public const UPDATED_AT = null;
 
     protected $fillable = [
         'blocker_id',

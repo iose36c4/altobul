@@ -16,7 +16,7 @@ class ApiKeyMiddleware
         $apiKeyHeader = $request->header('X-API-Key');
 
         Log::debug('API Key Middleware START', [
-            'header' => $apiKeyHeader,
+            'header' => $apiKeyHeader ? substr($apiKeyHeader, 0, 4).'****' : null,
             'expected_type' => $expectedType,
             'path' => $request->path(),
         ]);

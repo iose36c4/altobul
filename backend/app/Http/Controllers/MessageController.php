@@ -19,7 +19,7 @@ class MessageController extends Controller
     {
         $user = request()->user();
 
-        $this->authz->canChat($user, $conversation->userA() === $user ? $conversation->userB : $conversation->userA)->throwIfDenied();
+        $this->authz->canViewConversation($user, $conversation)->throwIfDenied();
 
         $messages = $conversation->messages()
             ->with('sender')
@@ -41,7 +41,7 @@ class MessageController extends Controller
     {
         $user = $request->user();
 
-        $this->authz->canSendMessage($user, $conversation->userA() === $user ? $conversation->userB : $conversation->userA)->throwIfDenied();
+        $this->authz->canSendMessage($user, $conversation)->throwIfDenied();
 
         if (! $conversation->isActive()) {
             return response()->json([

@@ -3,12 +3,13 @@
 namespace App\Models;
 
 use App\Traits\HasExpiration;
+use App\Traits\HasUuidPrimaryKey;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class Toke extends Model
 {
-    use HasExpiration;
+    use HasExpiration, HasUuidPrimaryKey;
 
     protected $table = 'tokes';
 
@@ -17,6 +18,8 @@ class Toke extends Model
     public $incrementing = false;
 
     protected $keyType = 'string';
+
+    public const UPDATED_AT = null;
 
     protected $fillable = [
         'sender_id',

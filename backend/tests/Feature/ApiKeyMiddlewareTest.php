@@ -58,11 +58,15 @@ class ApiKeyMiddlewareTest extends TestCase
         $service = new ApiKeyService;
         $result = $service->createApiKey($admin, 'Test Client Key', 'CLIENT');
 
+        // Use a CLIENT endpoint that doesn't require auth:sanctum (login)
         $response = $this->withHeader('X-API-Key', $result['raw_key'])
-            ->getJson('/api/test-api-key');
+            ->postJson('/api/client/auth/login', [
+                'email' => 'test@example.com',
+                'password' => 'password',
+            ]);
 
-        $this->assertEquals(200, $response->status());
-        $this->assertEquals('API key middleware passed', $response->json('message'));
+        // 422 = invalid credentials, but API key middleware passed
+        $this->assertEquals(422, $response->status());
     }
 
     public function test_admin_key_can_access_admin_endpoint(): void
@@ -105,7 +109,10 @@ class ApiKeyMiddlewareTest extends TestCase
         $result = $service->createApiKey($admin, 'Test Admin Key', 'ADMIN');
 
         $response = $this->withHeader('X-API-Key', $result['raw_key'])
-            ->getJson('/api/test-api-key');
+            ->postJson('/api/client/auth/login', [
+                'email' => 'test@example.com',
+                'password' => 'password',
+            ]);
 
         $this->assertEquals(403, $response->status());
         $this->assertEquals('API key type mismatch', $response->json('error'));
@@ -114,7 +121,10 @@ class ApiKeyMiddlewareTest extends TestCase
     public function test_invalid_api_key_rejected(): void
     {
         $response = $this->withHeader('X-API-Key', 'invalid_key')
-            ->getJson('/api/test-api-key');
+            ->postJson('/api/client/auth/login', [
+                'email' => 'test@example.com',
+                'password' => 'password',
+            ]);
 
         $this->assertEquals(401, $response->status());
         $this->assertEquals('INVALID_API_KEY', $response->json('code'));
@@ -130,7 +140,10 @@ class ApiKeyMiddlewareTest extends TestCase
         $apiKey->revoke();
 
         $response = $this->withHeader('X-API-Key', $result['raw_key'])
-            ->getJson('/api/test-api-key');
+            ->postJson('/api/client/auth/login', [
+                'email' => 'test@example.com',
+                'password' => 'password',
+            ]);
 
         $this->assertEquals(401, $response->status());
         $this->assertEquals('API_KEY_REVOKED', $response->json('code'));
@@ -154,7 +167,10 @@ class ApiKeyMiddlewareTest extends TestCase
         ]);
 
         $response = $this->withHeader('X-API-Key', $rawKey)
-            ->getJson('/api/test-api-key');
+            ->postJson('/api/client/auth/login', [
+                'email' => 'test@example.com',
+                'password' => 'password',
+            ]);
 
         $this->assertEquals(401, $response->status());
         $this->assertEquals('API_KEY_EXPIRED', $response->json('code'));
@@ -162,7 +178,10 @@ class ApiKeyMiddlewareTest extends TestCase
 
     public function test_missing_api_key_rejected(): void
     {
-        $response = $this->getJson('/api/test-api-key');
+        $response = $this->postJson('/api/client/auth/login', [
+            'email' => 'test@example.com',
+            'password' => 'password',
+        ]);
 
         $this->assertEquals(401, $response->status());
         $this->assertEquals('MISSING_API_KEY', $response->json('code'));
@@ -175,7 +194,10 @@ class ApiKeyMiddlewareTest extends TestCase
         $result = $service->createApiKey($admin, 'Test Key', 'CLIENT');
 
         $this->withHeader('X-API-Key', $result['raw_key'])
-            ->getJson('/api/test-api-key');
+            ->postJson('/api/client/auth/login', [
+                'email' => 'test@example.com',
+                'password' => 'password',
+            ]);
 
         $apiKey = ApiKey::where('key_prefix', substr($result['raw_key'], 0, 8))->first();
 

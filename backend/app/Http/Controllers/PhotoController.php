@@ -20,7 +20,6 @@ class PhotoController extends Controller
 
         $photos = Photo::where('user_id', $user->id)
             ->where('status', 'ACTIVE')
-            ->where('expires_at', '>', now())
             ->latest()
             ->paginate(20);
 
@@ -40,20 +39,21 @@ class PhotoController extends Controller
         $user = $request->user();
 
         $data = $request->validate([
-            'url' => ['required', 'string', 'max:500'],
-            'thumbnail_url' => ['nullable', 'string', 'max:500'],
+            'storage_key' => ['required', 'string', 'max:500'],
             'visibility' => ['required', 'string', 'in:PUBLIC,MATCH,FRIENDS,PRIVATE'],
             'requires_verified' => ['nullable', 'boolean'],
         ]);
 
         $photo = Photo::create([
             'user_id' => $user->id,
-            'url' => $data['url'],
-            'thumbnail_url' => $data['thumbnail_url'] ?? null,
+            'storage_key' => $data['storage_key'],
+            'mime_type' => 'image/jpeg',
+            'width' => 1,
+            'height' => 1,
+            'size_bytes' => 1,
             'visibility' => $data['visibility'],
             'requires_verified' => $data['requires_verified'] ?? false,
             'status' => 'ACTIVE',
-            'expires_at' => now()->addHours(24),
         ]);
 
         return response()->json([
@@ -63,9 +63,17 @@ class PhotoController extends Controller
 
     public function show(Photo $photo): JsonResponse
     {
+        if ($photo->status !== 'ACTIVE') {
+            return response()->json([
+                'error' => 'Not found',
+                'message' => 'This photo is no longer available',
+            ], 404);
+        }
+
         $user = request()->user();
 
-        $this->authz->canViewPhoto($user, $photo->user, $photo->id)->throwIfDenied();
+        $result = $this->authz->canViewPhoto($user, $photo->user, $photo->id);
+        $result->throwIfDenied();
 
         return response()->json([
             'photo' => new PhotoResource($photo->fresh()),

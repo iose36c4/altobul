@@ -15,7 +15,7 @@ return new class extends Migration
             $table->foreignUuid('user_b_id')->constrained('users')->cascadeOnDelete();
             $table->timestampTz('created_at')->useCurrent();
             $table->timestampTz('expires_at')->nullable(false);
-            $table->enum('status', ['ACTIVE', 'EXPIRED', 'ENDED_BY_BLOCK'])->default('ACTIVE');
+            $table->enum('status', ['ACTIVE', 'EXPIRED', 'ENDED_BY_BLOCK', 'ENDED'])->default('ACTIVE');
             $table->timestampTz('ended_at')->nullable();
             $table->foreignUuid('ended_by')->nullable()->constrained('users');
         });
