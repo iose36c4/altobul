@@ -8,6 +8,7 @@ use App\Models\User;
 use App\Services\Authorization\AuthorizationService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 
 class ConversationController extends Controller
 {
@@ -50,21 +51,33 @@ class ConversationController extends Controller
 
         $this->authz->canStartConversation($user, $recipient)->throwIfDenied();
 
-        $conversation = Conversation::between($user, $recipient)->first();
+        $conversation = DB::transaction(function () use ($user, $recipient) {
+            $minId = min($user->id, $recipient->id);
+            $maxId = max($user->id, $recipient->id);
 
-        if (! $conversation) {
-            $conversation = Conversation::create([
-                'user_a_id' => min($user->id, $recipient->id),
-                'user_b_id' => max($user->id, $recipient->id),
+            $existing = Conversation::where('user_a_id', $minId)
+                ->where('user_b_id', $maxId)
+                ->lockForUpdate()
+                ->first();
+
+            if ($existing) {
+                if (! $existing->isActive()) {
+                    $existing->update([
+                        'status' => 'ACTIVE',
+                        'ended_at' => null,
+                        'ended_by' => null,
+                    ]);
+                }
+
+                return $existing;
+            }
+
+            return Conversation::create([
+                'user_a_id' => $minId,
+                'user_b_id' => $maxId,
                 'status' => 'ACTIVE',
             ]);
-        } elseif (! $conversation->isActive()) {
-            $conversation->update([
-                'status' => 'ACTIVE',
-                'ended_at' => null,
-                'ended_by' => null,
-            ]);
-        }
+        });
 
         return response()->json([
             'conversation' => new ConversationResource($conversation->load(['userA.profile', 'userB.profile'])),

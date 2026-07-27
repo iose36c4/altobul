@@ -9,6 +9,7 @@ use App\Models\UserMatch;
 use App\Services\Authorization\AuthorizationService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 
 class TokeController extends Controller
 {
@@ -82,30 +83,52 @@ class TokeController extends Controller
             ], 422);
         }
 
-        $existingMutual = Toke::where('sender_id', $user->id)
-            ->where('receiver_id', $toke->sender_id)
-            ->where('status', 'ACTIVE')
-            ->where('expires_at', '>', now())
-            ->exists();
+        $result = DB::transaction(function () use ($user, $toke) {
+            $locked = Toke::where('id', $toke->id)
+                ->lockForUpdate()
+                ->first();
 
-        $toke->update([
-            'status' => 'CONSUMED',
-            'matched_at' => now(),
-        ]);
+            if (! $locked || $locked->status !== 'ACTIVE' || $locked->isExpired()) {
+                return null;
+            }
 
-        if (! UserMatch::between($user, $toke->sender_id)->active()->exists()) {
-            UserMatch::create([
-                'user_a_id' => min($user->id, $toke->sender_id),
-                'user_b_id' => max($user->id, $toke->sender_id),
-                'expires_at' => now()->addDays(7),
-                'status' => 'ACTIVE',
+            $existingMutual = Toke::where('sender_id', $user->id)
+                ->where('receiver_id', $toke->sender_id)
+                ->where('status', 'ACTIVE')
+                ->where('expires_at', '>', now())
+                ->lockForUpdate()
+                ->exists();
+
+            $locked->update([
+                'status' => 'CONSUMED',
+                'matched_at' => now(),
             ]);
+
+            if (! UserMatch::between($user, $toke->sender_id)->active()->lockForUpdate()->exists()) {
+                UserMatch::create([
+                    'user_a_id' => min($user->id, $toke->sender_id),
+                    'user_b_id' => max($user->id, $toke->sender_id),
+                    'expires_at' => now()->addDays(7),
+                    'status' => 'ACTIVE',
+                ]);
+            }
+
+            return ['mutual_toke' => $existingMutual];
+        });
+
+        if (is_null($result)) {
+            return response()->json([
+                'error' => 'Invalid toke',
+                'message' => 'This toke is no longer active',
+            ], 422);
         }
 
+        $toke->refresh();
+
         return response()->json([
-            'toke' => new TokeResource($toke->fresh()),
+            'toke' => new TokeResource($toke),
             'match_created' => true,
-            'mutual_toke' => $existingMutual,
+            'mutual_toke' => $result['mutual_toke'],
         ]);
     }
 

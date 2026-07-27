@@ -21,54 +21,32 @@ use App\Http\Controllers\TokeController;
 use App\Http\Controllers\UserController;
 use Illuminate\Support\Facades\Route;
 
-// Auth Routes - require CLIENT API Key
-Route::prefix('auth')
-    ->middleware(['api.key:CLIENT'])
-    ->group(function () {
-        Route::post('register', [AuthController::class, 'register']);
-        Route::post('login', [AuthController::class, 'login']);
-        Route::post('forgot-password', [AuthController::class, 'forgotPassword']);
-        Route::post('reset-password', [AuthController::class, 'resetPassword']);
-
-        // Protected auth routes - require both API Key and User Token
-        Route::middleware('auth:sanctum')->group(function () {
-            Route::post('logout', [AuthController::class, 'logout']);
-            Route::post('refresh', [AuthController::class, 'refresh']);
-            Route::get('me', [AuthController::class, 'me']);
-            Route::get('verify-email/{id}/{hash}', [AuthController::class, 'verifyEmail'])
-                ->middleware('signed')
-                ->name('verification.verify');
-            Route::post('resend-verification', [AuthController::class, 'resendVerificationEmail']);
-
-            // Verification Request Routes
-            Route::post('verification/request', [AuthController::class, 'requestVerification']);
-            Route::get('verification/status', [AuthController::class, 'getVerificationStatus']);
-        });
-    });
-
 // CLIENT API - Requires CLIENT API Key
 Route::prefix('client')
     ->middleware(['api.key:CLIENT'])
     ->group(function () {
-        // Auth routes for client
+        // Public auth routes (no user token required)
         Route::prefix('auth')->group(function () {
             Route::post('register', [AuthController::class, 'register']);
             Route::post('login', [AuthController::class, 'login']);
             Route::post('forgot-password', [AuthController::class, 'forgotPassword']);
             Route::post('reset-password', [AuthController::class, 'resetPassword']);
 
-            Route::middleware('auth:sanctum')->group(function () {
-                Route::post('logout', [AuthController::class, 'logout']);
-                Route::post('refresh', [AuthController::class, 'refresh']);
-                Route::get('me', [AuthController::class, 'me']);
-                Route::get('verify-email/{id}/{hash}', [AuthController::class, 'verifyEmail'])
-                    ->middleware('signed')
-                    ->name('verification.verify');
-                Route::post('resend-verification', [AuthController::class, 'resendVerificationEmail']);
+            // Email verification - only needs signed URL + API key, no auth token
+            Route::get('verify-email/{id}/{hash}', [AuthController::class, 'verifyEmail'])
+                ->middleware('signed')
+                ->name('verification.verify');
+        });
 
-                Route::post('verification/request', [AuthController::class, 'requestVerification']);
-                Route::get('verification/status', [AuthController::class, 'getVerificationStatus']);
-            });
+        // Protected auth routes - require API Key + User Token
+        Route::middleware('auth:sanctum')->prefix('auth')->group(function () {
+            Route::post('logout', [AuthController::class, 'logout']);
+            Route::post('refresh', [AuthController::class, 'refresh']);
+            Route::get('me', [AuthController::class, 'me']);
+            Route::post('resend-verification', [AuthController::class, 'resendVerificationEmail']);
+
+            Route::post('verification/request', [AuthController::class, 'requestVerification']);
+            Route::get('verification/status', [AuthController::class, 'getVerificationStatus']);
         });
 
         // Profile Routes
@@ -158,25 +136,28 @@ Route::prefix('client')
 Route::prefix('admin')
     ->middleware(['api.key:ADMIN'])
     ->group(function () {
-        // Auth routes for admin (no admin middleware - any user can log in)
+        // Public auth routes (no user token required)
         Route::prefix('auth')->group(function () {
             Route::post('register', [AuthController::class, 'register']);
             Route::post('login', [AuthController::class, 'login']);
             Route::post('forgot-password', [AuthController::class, 'forgotPassword']);
             Route::post('reset-password', [AuthController::class, 'resetPassword']);
 
-            Route::middleware('auth:sanctum')->group(function () {
-                Route::post('logout', [AuthController::class, 'logout']);
-                Route::post('refresh', [AuthController::class, 'refresh']);
-                Route::get('me', [AuthController::class, 'me']);
-                Route::get('verify-email/{id}/{hash}', [AuthController::class, 'verifyEmail'])
-                    ->middleware('signed')
-                    ->name('verification.verify');
-                Route::post('resend-verification', [AuthController::class, 'resendVerificationEmail']);
+            // Email verification - only needs signed URL + API key, no auth token
+            Route::get('verify-email/{id}/{hash}', [AuthController::class, 'verifyEmail'])
+                ->middleware('signed')
+                ->name('verification.verify');
+        });
 
-                Route::post('verification/request', [AuthController::class, 'requestVerification']);
-                Route::get('verification/status', [AuthController::class, 'getVerificationStatus']);
-            });
+        // Protected auth routes - require API Key + User Token
+        Route::middleware('auth:sanctum')->prefix('auth')->group(function () {
+            Route::post('logout', [AuthController::class, 'logout']);
+            Route::post('refresh', [AuthController::class, 'refresh']);
+            Route::get('me', [AuthController::class, 'me']);
+            Route::post('resend-verification', [AuthController::class, 'resendVerificationEmail']);
+
+            Route::post('verification/request', [AuthController::class, 'requestVerification']);
+            Route::get('verification/status', [AuthController::class, 'getVerificationStatus']);
         });
 
         // Admin Configuration - requires admin authorization

@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Models\Friendship;
 use App\Models\FriendshipRequest;
+use App\Models\Photo;
 use App\Models\Toke;
 use App\Models\User;
 use App\Models\UserMatch;
@@ -386,6 +387,21 @@ class SocialDomainTest extends TestCase
         $this->assertContains($response->status(), [403, 422]);
     }
 
+    protected function createPhoto(User $user, array $attributes = []): Photo
+    {
+        return Photo::create(array_merge([
+            'user_id' => $user->id,
+            'storage_key' => "users/{$user->id}/".(string) Str::uuid().'.webp',
+            'mime_type' => 'image/webp',
+            'width' => 800,
+            'height' => 600,
+            'size_bytes' => 50000,
+            'visibility' => 'PUBLIC',
+            'requires_verified' => false,
+            'status' => 'ACTIVE',
+        ], $attributes));
+    }
+
     public function test_photos_and_posts_with_privacy(): void
     {
         $admin = $this->createAdmin();
@@ -397,23 +413,18 @@ class SocialDomainTest extends TestCase
         $tokenA = $this->login($userA->email, $clientKey['raw_key']);
         $tokenB = $this->login($userB->email, $clientKey['raw_key']);
 
-        // User A creates private photo
-        $response = $this->apiPost('/api/client/photos', $clientKey['raw_key'], $tokenA, [
-            'storage_key' => 'photos/test.jpg',
+        // User A creates private photo (directly in DB for authorization testing)
+        $photo = $this->createPhoto($userA, [
             'visibility' => 'PRIVATE',
-            'requires_verified' => false,
         ]);
 
-        $this->assertEquals(201, $response->status());
-        $photoId = $response->json('photo.id');
-
         // User B cannot see private photo
-        $response = $this->apiGet("/api/client/photos/{$photoId}", $clientKey['raw_key'], $tokenB);
+        $response = $this->apiGet("/api/client/photos/{$photo->id}", $clientKey['raw_key'], $tokenB);
 
         $this->assertEquals(403, $response->status());
 
         // User A can see own photo
-        $response = $this->apiGet("/api/client/photos/{$photoId}", $clientKey['raw_key'], $tokenA);
+        $response = $this->apiGet("/api/client/photos/{$photo->id}", $clientKey['raw_key'], $tokenA);
 
         $this->assertEquals(200, $response->status());
 

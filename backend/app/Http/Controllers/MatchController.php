@@ -9,6 +9,7 @@ use App\Models\UserMatch;
 use App\Services\Authorization\AuthorizationService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 
 class MatchController extends Controller
 {
@@ -48,21 +49,35 @@ class MatchController extends Controller
 
         $this->authz->canConvertMatchToFriendship($user, $target)->throwIfDenied();
 
-        $friendship = Friendship::create([
-            'user_a_id' => min($user->id, $target->id),
-            'user_b_id' => max($user->id, $target->id),
-            'status' => 'ACTIVE',
-        ]);
+        $friendship = DB::transaction(function () use ($user, $target, $match) {
+            $lockedMatch = UserMatch::where('id', $match->id)
+                ->lockForUpdate()
+                ->first();
 
-        $match->update([
-            'status' => 'ENDED',
-            'ended_at' => now(),
-            'ended_by' => $user->id,
-        ]);
+            if (! $lockedMatch || $lockedMatch->status !== 'ACTIVE') {
+                abort(422, 'This match is no longer active.');
+            }
+
+            $friendship = Friendship::create([
+                'user_a_id' => min($user->id, $target->id),
+                'user_b_id' => max($user->id, $target->id),
+                'status' => 'ACTIVE',
+            ]);
+
+            $lockedMatch->update([
+                'status' => 'ENDED',
+                'ended_at' => now(),
+                'ended_by' => $user->id,
+            ]);
+
+            return $friendship;
+        });
+
+        $match->refresh();
 
         return response()->json([
             'friendship' => new FriendshipResource($friendship->load(['userA.profile', 'userB.profile'])),
-            'match' => new UserMatchResource($match->fresh()),
+            'match' => new UserMatchResource($match),
         ]);
     }
 }

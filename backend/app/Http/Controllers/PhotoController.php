@@ -2,16 +2,20 @@
 
 namespace App\Http\Controllers;
 
+use App\Exceptions\PhotoLimitReachedException;
 use App\Http\Resources\PhotoResource;
 use App\Models\Photo;
 use App\Services\Authorization\AuthorizationService;
+use App\Services\Photo\PhotoService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Validation\ValidationException;
 
 class PhotoController extends Controller
 {
     public function __construct(
         private AuthorizationService $authz,
+        private PhotoService $photoService,
     ) {}
 
     public function index(Request $request): JsonResponse
@@ -38,27 +42,33 @@ class PhotoController extends Controller
     {
         $user = $request->user();
 
-        $data = $request->validate([
-            'storage_key' => ['required', 'string', 'max:500'],
-            'visibility' => ['required', 'string', 'in:PUBLIC,MATCH,FRIENDS,PRIVATE'],
-            'requires_verified' => ['nullable', 'boolean'],
-        ]);
+        try {
+            $data = $request->validate([
+                'photo' => ['required', 'file', 'max:10240', 'mimes:jpeg,png,webp'],
+                'visibility' => ['required', 'string', 'in:PUBLIC,MATCH,FRIENDS,PRIVATE'],
+                'requires_verified' => ['nullable', 'boolean'],
+            ]);
+        } catch (ValidationException $e) {
+            throw $e;
+        }
 
-        $photo = Photo::create([
-            'user_id' => $user->id,
-            'storage_key' => $data['storage_key'],
-            'mime_type' => 'image/jpeg',
-            'width' => 1,
-            'height' => 1,
-            'size_bytes' => 1,
-            'visibility' => $data['visibility'],
-            'requires_verified' => $data['requires_verified'] ?? false,
-            'status' => 'ACTIVE',
-        ]);
+        try {
+            $photo = $this->photoService->upload(
+                $user,
+                $request->file('photo'),
+                $data['visibility'],
+                $data['requires_verified'] ?? false,
+            );
+        } catch (PhotoLimitReachedException $e) {
+            return response()->json([
+                'error' => 'Limit reached',
+                'message' => $e->getMessage(),
+            ], 422);
+        }
 
         return response()->json([
-            'photo' => new PhotoResource($photo->fresh()),
-        ], 201);
+            'photo' => new PhotoResource($photo),
+        ], 202);
     }
 
     public function show(Photo $photo): JsonResponse
@@ -76,7 +86,7 @@ class PhotoController extends Controller
         $result->throwIfDenied();
 
         return response()->json([
-            'photo' => new PhotoResource($photo->fresh()),
+            'photo' => new PhotoResource($photo),
         ]);
     }
 
