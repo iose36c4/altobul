@@ -29,6 +29,18 @@ Route::prefix('admin')->name('admin.')->group(function () {
     Route::post('/login', [AdminPanelController::class, 'login'])
         ->name('login.post')
         ->middleware('guest');
+    Route::get('/forgot-password', [AdminPanelController::class, 'showForgotPassword'])
+        ->name('forgot-password')
+        ->middleware('guest');
+    Route::post('/forgot-password', [AdminPanelController::class, 'sendResetLink'])
+        ->name('forgot-password.post')
+        ->middleware('guest');
+    Route::get('/reset-password', [AdminPanelController::class, 'showResetPassword'])
+        ->name('reset-password')
+        ->middleware('guest');
+    Route::post('/reset-password', [AdminPanelController::class, 'resetPassword'])
+        ->name('reset-password.post')
+        ->middleware('guest');
     Route::post('/logout', [AdminPanelController::class, 'logout'])
         ->name('logout');
 
