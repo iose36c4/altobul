@@ -166,56 +166,11 @@ class InstallController extends Controller
         return redirect()->route('install.show', ['step' => 3]);
     }
 
-    public function saveApiKeys(Request $request): JsonResponse|RedirectResponse
-    {
-        $keys = $request->input('api_keys', []);
-
-        if (empty($keys)) {
-            if ($request->expectsJson()) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Debes crear al menos una clave API',
-                ], 422);
-            }
-
-            return back()->withErrors(['api_keys' => 'Debes crear al menos una clave API'])->withInput();
-        }
-
-        foreach ($keys as $index => $keyData) {
-            $validator = Validator::make($keyData, [
-                'name' => ['required', 'string', 'max:255'],
-                'type' => ['required', 'string', 'in:CLIENT,ADMIN'],
-                'expires_days' => ['nullable', 'integer', 'min:1'],
-            ]);
-
-            if ($validator->fails()) {
-                if ($request->expectsJson()) {
-                    return response()->json([
-                        'success' => false,
-                        'message' => 'Clave API #'.($index + 1).': '.$validator->errors()->first(),
-                        'errors' => $validator->errors(),
-                    ], 422);
-                }
-
-                return back()->withErrors($validator)->withInput();
-            }
-        }
-
-        session(['install_api_keys' => $keys]);
-
-        if ($request->expectsJson()) {
-            return response()->json(['success' => true]);
-        }
-
-        return redirect()->route('install.show', ['step' => 4]);
-    }
-
     public function execute(Request $request): JsonResponse|RedirectResponse
     {
         $adminData = session('install_admin');
-        $apiKeysData = session('install_api_keys');
 
-        if (! $adminData || ! $apiKeysData) {
+        if (! $adminData) {
             if ($request->expectsJson()) {
                 return response()->json([
                     'success' => false,
@@ -265,21 +220,8 @@ class InstallController extends Controller
 
             $admin = User::find($userId);
 
-            $createdKeys = [];
-            foreach ($apiKeysData as $keyData) {
-                $result = $this->apiKeyService->createApiKey(
-                    $admin,
-                    $keyData['name'],
-                    $keyData['type'],
-                    $keyData['expires_days'] ?? null,
-                );
-
-                $createdKeys[] = [
-                    'name' => $result['api_key']->name,
-                    'type' => $result['api_key']->type,
-                    'raw_key' => $result['raw_key'],
-                ];
-            }
+            $clientKey = $this->apiKeyService->createApiKey($admin, 'Client Production', 'CLIENT');
+            $adminKey = $this->apiKeyService->createApiKey($admin, 'Admin Production', 'ADMIN');
 
             $config->set('installed', true);
             $config->set('installed_at', now()->toISOString());
@@ -288,14 +230,25 @@ class InstallController extends Controller
 
             DB::commit();
 
-            session()->forget(['install_admin', 'install_api_keys']);
+            session()->forget('install_admin');
 
             $data = [
                 'admin' => [
                     'email' => $admin->email,
                     'role' => $admin->role,
                 ],
-                'api_keys' => $createdKeys,
+                'api_keys' => [
+                    [
+                        'name' => $clientKey['api_key']->name,
+                        'type' => $clientKey['api_key']->type,
+                        'raw_key' => $clientKey['raw_key'],
+                    ],
+                    [
+                        'name' => $adminKey['api_key']->name,
+                        'type' => $adminKey['api_key']->type,
+                        'raw_key' => $adminKey['raw_key'],
+                    ],
+                ],
             ];
 
             if ($request->expectsJson()) {

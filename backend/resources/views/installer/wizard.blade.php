@@ -24,17 +24,16 @@
         @php
             $currentStep = $step ?? 1;
             $steps = [
-                1 => ['label' => 'Base de datos', 'icon' => 'M4 7v10c0 2 1 3 3 3h10c2 0 3-1 3-3V7M4 7c0-2 1-3 3-3h10c2 0 3 1 3 3M4 7h16M9 11h.01M15 11h.01'],
-                2 => ['label' => 'Administrador', 'icon' => 'M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z'],
-                3 => ['label' => 'API Keys', 'icon' => 'M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z'],
-                4 => ['label' => 'Confirmar', 'icon' => 'M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z'],
+                1 => 'Base de datos',
+                2 => 'Administrador',
+                3 => 'Confirmar',
             ];
         @endphp
 
         {{-- Step Indicator --}}
         <div class="mb-8">
             <div class="flex items-center justify-between">
-                @foreach($steps as $num => $info)
+                @foreach($steps as $num => $label)
                     <div class="flex flex-col items-center flex-1">
                         <div class="w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold
                             {{ $num < $currentStep ? 'bg-green-500 text-white' : ($num === $currentStep ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-500') }}">
@@ -47,10 +46,10 @@
                             @endif
                         </div>
                         <span class="text-xs mt-2 {{ $num <= $currentStep ? 'text-gray-900 font-medium' : 'text-gray-400' }}">
-                            {{ $info['label'] }}
+                            {{ $label }}
                         </span>
                     </div>
-                    @if ($num < 4)
+                    @if ($num < 3)
                         <div class="flex-1 h-0.5 mx-2 {{ $num < $currentStep ? 'bg-green-500' : 'bg-gray-200' }}"></div>
                     @endif
                 @endforeach
@@ -199,75 +198,8 @@
             </div>
         @endif
 
-        {{-- STEP 3: API Keys --}}
+        {{-- STEP 3: Confirm & Install --}}
         @if ($currentStep === 3)
-            <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-8">
-                <h2 class="text-2xl font-bold text-gray-900 text-center mb-2">Claves API</h2>
-                <p class="text-gray-600 text-center mb-2">Creá las claves según tus aplicaciones</p>
-                <p class="text-xs text-gray-500 text-center mb-8">Podés agregar más claves después desde el panel admin</p>
-
-                <form method="POST" action="{{ route('install.save-keys') }}" id="apiKeysForm" class="space-y-4">
-                    @csrf
-
-                    <div id="keysContainer" class="space-y-4">
-                        {{-- Initial key entry --}}
-                        <div class="key-entry p-4 bg-gray-50 rounded-lg border border-gray-200 space-y-3" data-index="0">
-                            <div class="flex items-center justify-between">
-                                <span class="text-sm font-medium text-gray-700">Clave #1</span>
-                                <button type="button" class="remove-key text-red-400 hover:text-red-600 text-sm hidden">Eliminar</button>
-                            </div>
-                            <div>
-                                <input type="text" name="api_keys[0][name]" required
-                                       class="key-name w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition text-sm"
-                                       placeholder="Nombre (ej: App Cliente, Panel Admin, CRM)">
-                            </div>
-                            <div class="grid grid-cols-2 gap-3">
-                                <div>
-                                    <select name="api_keys[0][type]" required
-                                            class="key-type w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition text-sm bg-white">
-                                        <option value="CLIENT">CLIENT — App cliente</option>
-                                        <option value="ADMIN">ADMIN — Panel admin / CRM / Moderación</option>
-                                    </select>
-                                </div>
-                                <div>
-                                    <input type="number" name="api_keys[0][expires_days]"
-                                           min="1"
-                                           class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition text-sm"
-                                           placeholder="Días a expirar (vacío = sin expirar)">
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <button type="button" id="addKeyBtn"
-                            class="w-full border-2 border-dashed border-gray-300 rounded-lg py-3 text-sm text-gray-500 hover:border-blue-400 hover:text-blue-600 transition">
-                        + Agregar otra clave
-                    </button>
-
-                    <div class="p-4 bg-gray-50 rounded-lg">
-                        <h4 class="text-sm font-medium text-gray-900 mb-2">Tipos de clave:</h4>
-                        <ul class="text-xs text-gray-600 space-y-1">
-                            <li><strong>CLIENT</strong> — Para aplicaciones de usuarios finales (apps móviles, web clients)</li>
-                            <li><strong>ADMIN</strong> — Para paneles de administración, CRM, herramientas de moderación</li>
-                        </ul>
-                    </div>
-
-                    <div class="flex gap-3 pt-2">
-                        <a href="{{ route('install.show', ['step' => 2]) }}"
-                           class="flex-1 bg-gray-100 text-gray-700 py-3 px-4 rounded-lg font-medium hover:bg-gray-200 transition text-center">
-                            Atrás
-                        </a>
-                        <button type="submit"
-                                class="flex-1 bg-blue-600 text-white py-3 px-4 rounded-lg font-medium hover:bg-blue-700 transition">
-                            Siguiente
-                        </button>
-                    </div>
-                </form>
-            </div>
-        @endif
-
-        {{-- STEP 4: Confirm & Install --}}
-        @if ($currentStep === 4)
             <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-8">
                 <h2 class="text-2xl font-bold text-gray-900 text-center mb-2">Confirmar instalación</h2>
                 <p class="text-gray-600 text-center mb-8">Revisá todo antes de instalar</p>
@@ -293,19 +225,13 @@
                         </dl>
                     </div>
 
-                    <div class="p-4 bg-gray-50 rounded-lg">
-                        <h3 class="font-medium text-gray-900 mb-2">Claves API</h3>
-                        <div class="space-y-2">
-                            @foreach (session('install_api_keys', []) as $i => $key)
-                                <div class="flex items-center justify-between text-sm">
-                                    <span class="text-gray-900">{{ $key['name'] }}</span>
-                                    <span class="px-2 py-0.5 rounded text-xs font-medium
-                                        {{ $key['type'] === 'CLIENT' ? 'bg-blue-100 text-blue-800' : 'bg-purple-100 text-purple-800' }}">
-                                        {{ $key['type'] }}
-                                    </span>
-                                </div>
-                            @endforeach
-                        </div>
+                    <div class="p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                        <h3 class="font-medium text-blue-900 mb-2">Claves API</h3>
+                        <p class="text-sm text-blue-700">Se generarán automáticamente dos claves:</p>
+                        <ul class="text-sm text-blue-700 mt-1 space-y-1 list-disc list-inside">
+                            <li><strong>CLIENT</strong> — para la app cliente</li>
+                            <li><strong>ADMIN</strong> — para el panel de administración</li>
+                        </ul>
                     </div>
                 </div>
 
@@ -313,7 +239,7 @@
                     @csrf
 
                     <div class="flex gap-3">
-                        <a href="{{ route('install.show', ['step' => 3]) }}"
+                        <a href="{{ route('install.show', ['step' => 2]) }}"
                            class="flex-1 bg-gray-100 text-gray-700 py-3 px-4 rounded-lg font-medium hover:bg-gray-200 transition text-center">
                             Atrás
                         </a>
@@ -338,7 +264,6 @@
 @section('scripts')
     @if (!($installed ?? false))
     <script>
-        // Test database connection
         document.getElementById('testDbBtn')?.addEventListener('click', async function() {
             const btn = this;
             const result = document.getElementById('dbTestResult');
@@ -377,73 +302,6 @@
             btn.textContent = 'Probar conexión';
         });
 
-        // Add API key entry
-        let keyIndex = 1;
-        document.getElementById('addKeyBtn')?.addEventListener('click', function() {
-            const container = document.getElementById('keysContainer');
-            const entry = document.createElement('div');
-            entry.className = 'key-entry p-4 bg-gray-50 rounded-lg border border-gray-200 space-y-3';
-            entry.dataset.index = keyIndex;
-            entry.innerHTML = `
-                <div class="flex items-center justify-between">
-                    <span class="text-sm font-medium text-gray-700">Clave #${keyIndex + 1}</span>
-                    <button type="button" class="remove-key text-red-400 hover:text-red-600 text-sm">Eliminar</button>
-                </div>
-                <div>
-                    <input type="text" name="api_keys[${keyIndex}][name]" required
-                           class="key-name w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition text-sm"
-                           placeholder="Nombre (ej: App Cliente, Panel Admin, CRM)">
-                </div>
-                <div class="grid grid-cols-2 gap-3">
-                    <div>
-                        <select name="api_keys[${keyIndex}][type]" required
-                                class="key-type w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition text-sm bg-white">
-                            <option value="CLIENT">CLIENT — App cliente</option>
-                            <option value="ADMIN">ADMIN — Panel admin / CRM / Moderación</option>
-                        </select>
-                    </div>
-                    <div>
-                        <input type="number" name="api_keys[${keyIndex}][expires_days]"
-                               min="1"
-                               class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition text-sm"
-                               placeholder="Días a expirar (vacío = sin expirar)">
-                    </div>
-                </div>
-            `;
-            container.appendChild(entry);
-            keyIndex++;
-            updateRemoveButtons();
-        });
-
-        // Remove API key
-        document.getElementById('keysContainer')?.addEventListener('click', function(e) {
-            if (e.target.classList.contains('remove-key')) {
-                e.target.closest('.key-entry').remove();
-                renumberKeys();
-                updateRemoveButtons();
-            }
-        });
-
-        function renumberKeys() {
-            const entries = document.querySelectorAll('.key-entry');
-            entries.forEach((entry, i) => {
-                entry.querySelector('.text-sm.font-medium').textContent = `Clave #${i + 1}`;
-            });
-        }
-
-        function updateRemoveButtons() {
-            const entries = document.querySelectorAll('.key-entry');
-            entries.forEach(entry => {
-                const btn = entry.querySelector('.remove-key');
-                if (entries.length > 1) {
-                    btn.classList.remove('hidden');
-                } else {
-                    btn.classList.add('hidden');
-                }
-            });
-        }
-
-        // Install button loading
         document.getElementById('installForm')?.addEventListener('submit', function(e) {
             const btnText = document.getElementById('btnText');
             const btnLoading = document.getElementById('btnLoading');
