@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Events\Broadcast\NewFriendship;
 use App\Http\Resources\FriendshipResource;
 use App\Http\Resources\UserMatchResource;
 use App\Models\Friendship;
@@ -74,6 +75,9 @@ class MatchController extends Controller
         });
 
         $match->refresh();
+
+        // Broadcast new friendship event
+        broadcast(new NewFriendship($friendship->load(['userA.profile', 'userB.profile']), $user, $target));
 
         return response()->json([
             'friendship' => new FriendshipResource($friendship->load(['userA.profile', 'userB.profile'])),

@@ -2,6 +2,8 @@
 
 namespace App\Http\Controllers;
 
+use App\Events\Broadcast\NewMatch;
+use App\Events\Broadcast\NewTokeReceived;
 use App\Http\Resources\TokeResource;
 use App\Models\Toke;
 use App\Models\User;
@@ -35,6 +37,9 @@ class TokeController extends Controller
             'expires_at' => now()->addHours(48),
             'status' => 'ACTIVE',
         ]);
+
+        // Broadcast event to receiver
+        broadcast(new NewTokeReceived($toke->load(['sender', 'receiver'])));
 
         return response()->json([
             'toke' => new TokeResource($toke->load(['sender', 'receiver'])),
@@ -104,8 +109,9 @@ class TokeController extends Controller
                 'matched_at' => now(),
             ]);
 
+            $match = null;
             if (! UserMatch::between($user, $toke->sender_id)->active()->lockForUpdate()->exists()) {
-                UserMatch::create([
+                $match = UserMatch::create([
                     'user_a_id' => min($user->id, $toke->sender_id),
                     'user_b_id' => max($user->id, $toke->sender_id),
                     'expires_at' => now()->addDays(7),
@@ -113,7 +119,7 @@ class TokeController extends Controller
                 ]);
             }
 
-            return ['mutual_toke' => $existingMutual];
+            return ['mutual_toke' => $existingMutual, 'match' => $match];
         });
 
         if (is_null($result)) {
@@ -124,6 +130,12 @@ class TokeController extends Controller
         }
 
         $toke->refresh();
+
+        // Broadcast NewMatch event if a match was created
+        if ($result['match']) {
+            $match = $result['match']->load(['userA.profile', 'userB.profile']);
+            broadcast(new NewMatch($match, $match->userA, $match->userB));
+        }
 
         return response()->json([
             'toke' => new TokeResource($toke),

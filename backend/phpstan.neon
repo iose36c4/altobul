@@ -1,0 +1,19 @@
+includes:
+    - vendor/larastan/larastan/extension.neon
+    - vendor/phpstan/phpstan-deprecation-rules/rules.neon
+
+parameters:
+    level: 5
+    paths:
+        - app
+        - routes
+        - database
+    excludePaths:
+        - storage
+        - vendor
+        - bootstrap/cache
+    ignoreErrors:
+        - '#^Property .* does not exist on class.*$#'
+        - '#^Method .* does not exist on class.*$#'
+    checkMissingIterableValueType: false
+    checkGenericClassInNonGenericObjectType: false

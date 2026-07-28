@@ -5,6 +5,7 @@ use App\Models\FriendshipRequest;
 use App\Models\Photo;
 use App\Models\Post;
 use App\Models\Profile;
+use App\Models\ProfileFieldValueAccess;
 use App\Models\Toke;
 use App\Models\User;
 use App\Models\UserMatch;
@@ -16,6 +17,7 @@ use App\Policies\FriendshipRequestPolicy;
 use App\Policies\MatchPolicy;
 use App\Policies\PhotoPolicy;
 use App\Policies\PostPolicy;
+use App\Policies\ProfileFieldValueAccessPolicy;
 use App\Policies\ProfilePolicy;
 use App\Policies\TokePolicy;
 use App\Policies\UserMatchPolicy;
@@ -38,6 +40,7 @@ class AuthServiceProvider extends ServiceProvider
         Block::class => BlockPolicy::class,
         Conversation::class => ConversationPolicy::class,
         VerificationRequest::class => VerificationRequestPolicy::class,
+        ProfileFieldValueAccess::class => ProfileFieldValueAccessPolicy::class,
     ];
 
     public function boot(): void

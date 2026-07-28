@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Events\Broadcast\NewFriendship;
 use App\Http\Resources\FriendshipRequestResource;
 use App\Http\Resources\FriendshipResource;
 use App\Models\Friendship;
@@ -65,6 +66,9 @@ class FriendshipRequestController extends Controller
         ]);
 
         $friendshipRequest->update(['status' => 'ACCEPTED']);
+
+        // Broadcast new friendship event
+        broadcast(new NewFriendship($friendship->load(['userA.profile', 'userB.profile']), $user, $friendshipRequest->requester));
 
         return response()->json([
             'friendship' => new FriendshipResource($friendship->load(['userA.profile', 'userB.profile'])),

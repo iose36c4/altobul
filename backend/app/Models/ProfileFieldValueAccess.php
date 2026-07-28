@@ -19,10 +19,14 @@ class ProfileFieldValueAccess extends Model
         'field_value_id',
         'grantee_id',
         'granted_by',
+        'revoked_at',
+        'expires_at',
     ];
 
     protected $casts = [
         'granted_at' => 'datetime',
+        'revoked_at' => 'datetime',
+        'expires_at' => 'datetime',
     ];
 
     public function fieldValue(): BelongsTo

@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Events\Broadcast\NewMessage;
 use App\Http\Resources\MessageResource;
 use App\Models\Conversation;
 use App\Models\Message;
@@ -61,6 +62,9 @@ class MessageController extends Controller
         ]);
 
         $conversation->update(['updated_at' => now()]);
+
+        // Broadcast new message event
+        broadcast(new NewMessage($message->load('sender')));
 
         return response()->json([
             'message' => new MessageResource($message->load('sender')),

@@ -16,6 +16,7 @@ use App\Http\Controllers\MatchController;
 use App\Http\Controllers\MessageController;
 use App\Http\Controllers\PhotoController;
 use App\Http\Controllers\PostController;
+use App\Http\Controllers\Profile\ProfileFieldValueAccessController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\TokeController;
 use App\Http\Controllers\UserController;
@@ -58,6 +59,13 @@ Route::prefix('client')
             Route::get('fields/{slug}', [ProfileController::class, 'getField']);
             Route::put('fields/{slug}', [ProfileController::class, 'setField']);
             Route::delete('fields/{slug}', [ProfileController::class, 'deleteField']);
+
+            // Profile Field Value Access (Grants)
+            Route::prefix('fields/{fieldValue}/grants')->middleware('auth:sanctum')->group(function () {
+                Route::get('/', [ProfileFieldValueAccessController::class, 'index']);
+                Route::post('/', [ProfileFieldValueAccessController::class, 'store']);
+                Route::delete('{grantee}', [ProfileFieldValueAccessController::class, 'destroy']);
+            });
         });
 
         // User Profile (public view)
@@ -146,7 +154,7 @@ Route::prefix('admin')
             // Email verification - only needs signed URL + API key, no auth token
             Route::get('verify-email/{id}/{hash}', [AuthController::class, 'verifyEmail'])
                 ->middleware('signed')
-                ->name('verification.verify');
+                ->name('admin.verification.verify');
         });
 
         // Protected auth routes - require API Key + User Token
