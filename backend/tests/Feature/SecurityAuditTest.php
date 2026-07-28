@@ -2,11 +2,14 @@
 
 namespace Tests\Feature;
 
+use App\Models\ApiKey;
 use App\Models\AppConfig;
 use App\Models\User;
 use App\Services\ApiKeyService;
+use Carbon\Carbon;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
 use Tests\TestCase;
 
@@ -53,7 +56,7 @@ class SecurityAuditTest extends TestCase
         $admin = $this->createAdmin();
         $apiKeyService = app(ApiKeyService::class);
         $result = $apiKeyService->createApiKey($admin, 'Admin Key', 'ADMIN');
-        $token = $admin->createToken('api-token', ['*'], now()->addDays(30))->plainTextToken;
+        $token = $admin->createToken('api-token', ['*'], now()->addDays(7))->plainTextToken;
 
         $response = $this->withHeader('X-API-Key', $result['raw_key'])
             ->withHeader('Authorization', "Bearer {$token}")
@@ -73,7 +76,7 @@ class SecurityAuditTest extends TestCase
         $admin = $this->createAdmin();
         $apiKeyService = app(ApiKeyService::class);
         $result = $apiKeyService->createApiKey($admin, 'Admin Key', 'ADMIN');
-        $token = $admin->createToken('api-token', ['*'], now()->addDays(30))->plainTextToken;
+        $token = $admin->createToken('api-token', ['*'], now()->addDays(7))->plainTextToken;
 
         $response = $this->withHeader('X-API-Key', $result['raw_key'])
             ->withHeader('Authorization', "Bearer {$token}")
@@ -161,7 +164,7 @@ class SecurityAuditTest extends TestCase
 
         $apiKeyService = app(ApiKeyService::class);
         $result = $apiKeyService->createApiKey($user1, 'Client Key', 'CLIENT');
-        $token = $user1->createToken('api-token', ['*'], now()->addDays(30))->plainTextToken;
+        $token = $user1->createToken('api-token', ['*'], now()->addDays(7))->plainTextToken;
 
         $response = $this->withHeader('X-API-Key', $result['raw_key'])
             ->withHeader('Authorization', "Bearer {$token}")
@@ -194,7 +197,7 @@ class SecurityAuditTest extends TestCase
         $admin = $this->createAdmin();
         $apiKeyService = app(ApiKeyService::class);
         $result = $apiKeyService->createApiKey($admin, 'Admin Key', 'ADMIN');
-        $token = $admin->createToken('api-token', ['*'], now()->addDays(30))->plainTextToken;
+        $token = $admin->createToken('api-token', ['*'], now()->addDays(7))->plainTextToken;
 
         $response = $this->withHeader('X-API-Key', $result['raw_key'])
             ->withHeader('Authorization', "Bearer {$token}")
@@ -203,5 +206,137 @@ class SecurityAuditTest extends TestCase
         $response->assertStatus(200);
         $pagination = $response->json('pagination');
         $this->assertLessThanOrEqual(100, $pagination['per_page']);
+    }
+
+    public function test_account_lockout_after_failed_attempts(): void
+    {
+        $user = $this->createUser();
+        $apiKeyService = app(ApiKeyService::class);
+        $result = $apiKeyService->createApiKey($user, 'Client Key', 'CLIENT');
+
+        for ($i = 0; $i < 3; $i++) {
+            $this->withHeader('X-API-Key', $result['raw_key'])
+                ->postJson('/api/client/auth/login', [
+                    'email' => $user->email,
+                    'password' => 'wrong-password',
+                ]);
+        }
+
+        $fresh = $user->fresh();
+        $this->assertGreaterThan(0, $fresh->failed_login_attempts);
+        $this->assertNotNull($fresh->locked_until);
+        $this->assertTrue(now()->parse($fresh->locked_until)->isFuture());
+
+        $response = $this->withHeader('X-API-Key', $result['raw_key'])
+            ->postJson('/api/client/auth/login', [
+                'email' => $user->email,
+                'password' => 'wrong-password',
+            ]);
+
+        $response->assertStatus(422);
+        $this->assertArrayHasKey('email', $response->json('errors'));
+    }
+
+    public function test_successful_login_resets_failed_attempts(): void
+    {
+        $user = $this->createUser(['password' => 'correct-password']);
+        $apiKeyService = app(ApiKeyService::class);
+        $result = $apiKeyService->createApiKey($user, 'Client Key', 'CLIENT');
+
+        $this->withHeader('X-API-Key', $result['raw_key'])
+            ->postJson('/api/client/auth/login', [
+                'email' => $user->email,
+                'password' => 'wrong',
+            ]);
+
+        $this->assertGreaterThan(0, $user->fresh()->failed_login_attempts);
+
+        $response = $this->withHeader('X-API-Key', $result['raw_key'])
+            ->postJson('/api/client/auth/login', [
+                'email' => $user->email,
+                'password' => 'correct-password',
+            ]);
+
+        $response->assertOk();
+        $this->assertEquals(0, $user->fresh()->failed_login_attempts);
+        $this->assertNull($user->fresh()->locked_until);
+    }
+
+    public function test_token_lifetime_is_7_days(): void
+    {
+        $admin = $this->createAdmin();
+        $apiKeyService = app(ApiKeyService::class);
+        $result = $apiKeyService->createApiKey($admin, 'Client Key', 'CLIENT');
+
+        $response = $this->withHeader('X-API-Key', $result['raw_key'])
+            ->postJson('/api/client/auth/login', [
+                'email' => $admin->email,
+                'password' => 'password',
+            ]);
+
+        $response->assertOk();
+        $expiresAt = Carbon::parse($response->json('expires_at'));
+        $this->assertEqualsWithDelta(7, now()->diffInDays($expiresAt), 0.1);
+        $this->assertTrue($expiresAt->isAfter(now()));
+    }
+
+    public function test_api_key_rotation(): void
+    {
+        $admin = $this->createAdmin();
+        $apiKeyService = app(ApiKeyService::class);
+        $result = $apiKeyService->createApiKey($admin, 'Original Key', 'ADMIN');
+
+        $rotated = $apiKeyService->rotateApiKey($result['api_key'], $admin);
+
+        $this->assertArrayHasKey('raw_key', $rotated);
+        $this->assertNotEquals($result['raw_key'], $rotated['raw_key']);
+
+        $originalKey = ApiKey::find($result['api_key']->id);
+        $this->assertNotNull($originalKey->revoked_at);
+
+        $newKey = $rotated['api_key'];
+        $this->assertEquals('Original Key (rotated)', $newKey->name);
+        $this->assertEquals('ADMIN', $newKey->type);
+        $this->assertNull($newKey->revoked_at);
+    }
+
+    public function test_security_headers_present(): void
+    {
+        $response = $this->get('/up');
+
+        $response->assertHeader('X-Content-Type-Options', 'nosniff');
+        $response->assertHeader('X-Frame-Options', 'DENY');
+        $response->assertHeader('X-XSS-Protection', '0');
+        $response->assertHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
+        $response->assertHeader('Permissions-Policy', 'camera=(), microphone=(), geolocation=(), payment=()');
+        $response->assertHeader('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
+    }
+
+    public function test_email_verification_uses_hmac_not_sha1(): void
+    {
+        $user = $this->createUser();
+        $email = $user->email;
+        $key = config('app.key');
+
+        $oldHash = sha1($email);
+        $correctHash = hash_hmac('sha256', $email, $key);
+
+        $this->assertNotEquals($oldHash, $correctHash);
+        $this->assertEquals(64, strlen($correctHash));
+
+        $verified = hash_equals(hash_hmac('sha256', $email, $key), $correctHash);
+        $this->assertTrue($verified);
+    }
+
+    public function test_hashing_uses_argon2id_when_configured(): void
+    {
+        config(['hashing.driver' => 'argon2id']);
+        config(['hashing.argon.verify' => true]);
+
+        $password = 'test-password-'.Str::random(16);
+        $hash = Hash::make($password);
+
+        $this->assertStringStartsWith('$argon2id$', $hash);
+        $this->assertTrue(Hash::check($password, $hash));
     }
 }

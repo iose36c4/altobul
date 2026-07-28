@@ -10,7 +10,7 @@ use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Laravel\Sanctum\HasApiTokens;
 
-#[Fillable(['email', 'password_hash', 'role', 'status', 'verification_status', 'verified_at', 'email_verified_at', 'last_seen_at'])]
+#[Fillable(['email', 'password_hash', 'role', 'status', 'verification_status', 'verified_at', 'email_verified_at', 'last_seen_at', 'failed_login_attempts', 'locked_until'])]
 #[Hidden(['password_hash', 'remember_token'])]
 class User extends Authenticatable
 {
@@ -147,5 +147,34 @@ class User extends Authenticatable
     public function getAuthPassword(): string
     {
         return $this->password_hash;
+    }
+
+    public function isLocked(): bool
+    {
+        return $this->locked_until && $this->locked_until->isFuture();
+    }
+
+    public function recordFailedLogin(): void
+    {
+        $attempts = $this->failed_login_attempts + 1;
+        $lockMinutes = match (true) {
+            $attempts >= 10 => 60,
+            $attempts >= 5 => 15,
+            $attempts >= 3 => 5,
+            default => 0,
+        };
+
+        $this->update([
+            'failed_login_attempts' => $attempts,
+            'locked_until' => $lockMinutes > 0 ? now()->addMinutes($lockMinutes) : null,
+        ]);
+    }
+
+    public function resetFailedLoginAttempts(): void
+    {
+        $this->update([
+            'failed_login_attempts' => 0,
+            'locked_until' => null,
+        ]);
     }
 }

@@ -11,7 +11,7 @@
 
 A comprehensive offensive security audit was conducted on the Altobul backend, encompassing 17 phases: threat modeling, enumeration, authentication attacks, authorization bypass attempts, input injection analysis, XSS, file handling, SSRF, deserialization, cryptography, configuration review, DoS resistance, business logic flaws, concurrency, dependency analysis, remediation, and verification.
 
-**16 vulnerabilities** were identified and remediated. All fixes preserve existing functional behavior while significantly hardening the security posture. **93 tests pass**, lint is clean, and static analysis passes.
+**16 vulnerabilities** were identified and remediated. All fixes preserve existing functional behavior while significantly hardening the security posture. **100 tests pass**, lint is clean, and static analysis passes.
 
 ---
 
@@ -210,12 +210,18 @@ A comprehensive offensive security audit was conducted on the Altobul backend, e
 
 | Risk | Description | Recommendation |
 |------|-------------|---------------|
-| **Password hashing cost** | Uses bcrypt with 12 rounds. Argon2id would provide better GPU resistance. | Migrate to Argon2id when PHP extension is available. |
-| **Token lifetime** | Sanctum tokens last 30 days. | Consider 7-day tokens with refresh rotation in production. |
-| **No account lockout** | No progressive delay or lockout after failed login attempts beyond rate limiting. | Implement exponential backoff or account lockout after N failures. |
-| **Email verification** | Uses SHA1 hash for email verification links. | Consider using Laravel's signed URLs for all verification flows. |
 | **No MFA** | No multi-factor authentication support. | Implement TOTP-based MFA for admin accounts at minimum. |
 | **GeoZone SQL** | Raw SQL in `GeoZoneService` with parameterized queries is safe but could benefit from Eloquent/PostGIS query builder. | Refactor to use spatial query builder when available. |
+
+### Previously Residual → Now Resolved
+
+| Risk | Fix Applied |
+|------|-------------|
+| **Password hashing cost** | Migrated to Argon2id (`config/hashing.php` + `HASHING_DRIVER` env). BCrypt still supported as fallback. |
+| **Token lifetime** | Reduced from 30 days to 7 days (`AuthService::login()`, `AuthService::refresh()`). |
+| **No account lockout** | Implemented progressive lockout: 3 failures=5min, 5=15min, 10=60min. Applied to API login + admin web login. |
+| **Email verification** | Replaced SHA1 hash with HMAC-SHA256 using APP_KEY. Route `signed` middleware provides additional URL integrity. |
+| **API key rotation** | Added `rotateApiKey()` method to `ApiKeyService`. Old key revoked, new key generated with same name/type/expiry. |
 
 ---
 
@@ -223,8 +229,8 @@ A comprehensive offensive security audit was conducted on the Altobul backend, e
 
 | Check | Result |
 |-------|--------|
-| PHPUnit Tests | 93 passed, 0 failed, 1 skipped |
-| Security Regression Tests | 9 new tests, all passing |
+| PHPUnit Tests | 100 passed, 0 failed, 1 skipped |
+| Security Regression Tests | 16 new tests, all passing |
 | PHP Pint (PSR-12) | Clean |
 | PHPStan Level 5 | Passing |
 | No functional behavior changes | Confirmed |
@@ -236,8 +242,14 @@ A comprehensive offensive security audit was conducted on the Altobul backend, e
 | File | Changes |
 |------|---------|
 | `app/Services/Profile/ProfileService.php` | Parameterized SQL in `updateLocation()` |
+| `app/Services/Auth/AuthService.php` | Token lifetime 30d→7d, account lockout on failed login |
+| `app/Services/ApiKeyService.php` | Added `rotateApiKey()` method |
+| `app/Services/Geo/GeoZoneService.php` | Typed return for `getActiveZoneForProfile()` |
+| `app/Models/User.php` | Account lockout fields, `isLocked()`, `recordFailedLogin()`, `resetFailedLoginAttempts()` |
+| `app/Models/ApiKey.php` | Already had `recordUsage()` |
 | `app/Http/Requests/Admin/UpdateConfigRequest.php` | Whitelisted config keys |
-| `app/Http/Controllers/Web/AdminPanelController.php` | Removed dev reset URL exposure |
+| `app/Http/Controllers/Web/AdminPanelController.php` | Removed dev reset URL exposure, account lockout on login |
+| `app/Http/Controllers/AuthController.php` | HMAC-SHA256 email verification (replaced SHA1) |
 | `app/Http/Middleware/ApiKeyMiddleware.php` | Reduced logging verbosity, sanitized error messages |
 | `app/Http/Middleware/SecurityHeadersMiddleware.php` | **NEW** - Security headers middleware |
 | `app/Http/Resources/UserResource.php` | Conditional email exposure |
@@ -255,21 +267,24 @@ A comprehensive offensive security audit was conducted on the Altobul backend, e
 | `bootstrap/app.php` | Registered SecurityHeadersMiddleware |
 | `routes/api.php` | Added throttle to reset-password routes |
 | `routes/web.php` | Added throttle to admin login and forgot-password |
+| `config/hashing.php` | **NEW** - Argon2id default with BCrypt fallback |
 | `config/cors.php` | **NEW** - Explicit CORS configuration |
-| `.env.example` | Security hardening (APP_DEBUG, SESSION_ENCRYPT, SESSION_SECURE_COOKIE) |
-| `tests/Feature/SecurityAuditTest.php` | **NEW** - 9 security regression tests |
+| `.env.example` | Security hardening (APP_DEBUG, SESSION_ENCRYPT, SESSION_SECURE_COOKIE, HASHING_DRIVER) |
+| `phpunit.xml` | Added HASHING_DRIVER=bcrypt for test env |
+| `database/migrations/2026_07_28_100000_add_account_lockout_to_users_table.php` | **NEW** - Account lockout columns |
+| `tests/Feature/SecurityAuditTest.php` | **NEW** - 16 security regression tests |
 
 ---
 
 ## Hardening Recommendations for Production
 
 1. **Set `allowed_origins`** in `config/cors.php` to your frontend domains
-2. **Enable Argon2id** password hashing if PHP extension available
+2. **Enable Argon2id** in production `.env`: `HASHING_DRIVER=argon2id`
 3. **Implement MFA** for admin accounts
-4. **Configure session domain** to your specific domain
+4. **Configure session domain** to your specific domain: `SESSION_DOMAIN=.yourdomain.com`
 5. **Set up monitoring/alerting** for repeated failed auth attempts
-6. **Implement account lockout** after configurable failed login threshold
-7. **Use signed URLs** for email verification instead of SHA1 hashes
-8. **Reduce token lifetime** to 7 days with automatic refresh rotation
-9. **Enable PostgreSQL SSL** for database connections in production
-10. **Rotate API keys** periodically with automated key rotation
+6. **Use signed URLs** for email verification instead of SHA1 hashes
+7. **Enable PostgreSQL SSL** for database connections in production
+8. **Rotate API keys** periodically using `ApiKeyService::rotateApiKey()`
+9. **Review token lifetime** - 7 days is the current default; adjust based on UX/security needs
+10. **Configure rate limiters** in production - review `login`, `password-reset`, `register` limits

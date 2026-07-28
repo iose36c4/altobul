@@ -46,7 +46,7 @@ class GeoZoneService
             return null;
         }
 
-        return DB::selectOne(
+        $result = DB::selectOne(
             'SELECT gz.* FROM geo_zones gz
             INNER JOIN geo_polygons gp ON gz.id = gp.zone_id
             WHERE gz.is_active = true
@@ -57,6 +57,12 @@ class GeoZoneService
             LIMIT 1',
             [$profile->getKey()]
         );
+
+        if (! $result) {
+            return null;
+        }
+
+        return GeoZone::newQuery()->newModelInstance($result);
     }
 
     public function getDistance(Profile $from, Profile $to): float
@@ -65,7 +71,6 @@ class GeoZoneService
             return 0.0;
         }
 
-        // Returns distance in meters
         $result = DB::selectOne(
             'SELECT ST_Distance(?, ?) as distance',
             [$from->location, $to->location]

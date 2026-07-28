@@ -51,8 +51,18 @@ class AuthService
         $user = User::where('email', $credentials['email'])->first();
 
         if (! $user || ! Hash::check($credentials['password'], $user->password_hash)) {
+            if ($user) {
+                $user->recordFailedLogin();
+            }
+
             throw ValidationException::withMessages([
                 'email' => ['Invalid credentials'],
+            ]);
+        }
+
+        if ($user->isLocked()) {
+            throw ValidationException::withMessages([
+                'email' => ['Account is temporarily locked due to too many failed attempts. Try again later.'],
             ]);
         }
 
@@ -62,15 +72,17 @@ class AuthService
             ]);
         }
 
+        $user->resetFailedLoginAttempts();
+
         // Update last_seen_at
         $user->update(['last_seen_at' => now()]);
 
-        $token = $user->createToken('api-token', ['*'], now()->addDays(30))->plainTextToken;
+        $token = $user->createToken('api-token', ['*'], now()->addDays(7))->plainTextToken;
 
         return [
             'user' => $user->fresh(),
             'token' => $token,
-            'expires_at' => now()->addDays(30)->toISOString(),
+            'expires_at' => now()->addDays(7)->toISOString(),
         ];
     }
 
@@ -84,12 +96,12 @@ class AuthService
         $user->currentAccessToken()?->delete();
         $user->update(['last_seen_at' => now()]);
 
-        $token = $user->createToken('api-token', ['*'], now()->addDays(30))->plainTextToken;
+        $token = $user->createToken('api-token', ['*'], now()->addDays(7))->plainTextToken;
 
         return [
             'user' => $user->fresh(),
             'token' => $token,
-            'expires_at' => now()->addDays(30)->toISOString(),
+            'expires_at' => now()->addDays(7)->toISOString(),
         ];
     }
 

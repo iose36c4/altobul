@@ -78,7 +78,7 @@ class AuthController extends Controller
     {
         $user = User::find($id);
 
-        if (! $user || ! hash_equals(sha1($user->email), $hash)) {
+        if (! $user || ! hash_equals(hash_hmac('sha256', $user->email, app('config')['app.key']), $hash)) {
             return response()->json(['error' => 'Invalid verification link'], 404);
         }
 

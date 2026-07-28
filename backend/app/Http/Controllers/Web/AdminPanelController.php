@@ -37,7 +37,15 @@ class AdminPanelController extends Controller
         $user = User::where('email', $credentials['email'])->first();
 
         if (! $user || ! Hash::check($credentials['password'], $user->getAuthPassword())) {
+            if ($user) {
+                $user->recordFailedLogin();
+            }
+
             return back()->withErrors(['email' => 'Credenciales inválidas'])->withInput();
+        }
+
+        if ($user->isLocked()) {
+            return back()->withErrors(['email' => 'Tu cuenta está bloqueada temporalmente por demasiados intentos fallidos. Intentá de nuevo en unos minutos.'])->withInput();
         }
 
         if (! $user->isAdmin()) {
@@ -47,6 +55,8 @@ class AdminPanelController extends Controller
         if ($user->status !== 'active') {
             return back()->withErrors(['email' => 'Tu cuenta está deshabilitada'])->withInput();
         }
+
+        $user->resetFailedLoginAttempts();
 
         Auth::login($user, $request->boolean('remember'));
 

@@ -75,4 +75,16 @@ class ApiKeyService
             ->orderBy('created_at', 'desc')
             ->get();
     }
+
+    public function rotateApiKey(ApiKey $apiKey, User $rotatedBy): array
+    {
+        $apiKey->update(['revoked_at' => now()]);
+
+        return $this->createApiKey(
+            $rotatedBy,
+            $apiKey->name.' (rotated)',
+            $apiKey->type,
+            $apiKey->expires_at ? $apiKey->expires_at->diffInDays(now()) : null,
+        );
+    }
 }
