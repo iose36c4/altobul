@@ -58,7 +58,8 @@ class PointCast implements CastsAttributes
                 throw new \InvalidArgumentException('Invalid coordinates: lat must be -90..90, lng must be -180..180');
             }
 
-            return \DB::raw("ST_SetSRID(ST_MakePoint({$lng}, {$lat}), 4326)::geography");
+            return \DB::raw('ST_SetSRID(ST_MakePoint(?, ?), 4326)::geography')
+                ->setBindings([$lng, $lat]);
         }
 
         return $value;

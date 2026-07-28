@@ -378,7 +378,16 @@ class AuthorizationService implements AuthorizationServiceInterface
 
         // Verify resource exists and belongs to owner
         $resource = $this->getResource($resourceType, $resourceId);
-        if (! $resource || $resource->user_id !== $owner->id) {
+        if (! $resource) {
+            return AuthorizationResult::denied(AuthorizationReason::RESOURCE_DELETED);
+        }
+
+        $ownerId = match ($resourceType) {
+            'profile_field' => $resource->profile?->user_id ?? null,
+            default => $resource->user_id ?? null,
+        };
+
+        if (! $ownerId || $ownerId !== $owner->id) {
             return AuthorizationResult::denied(AuthorizationReason::RESOURCE_DELETED);
         }
 

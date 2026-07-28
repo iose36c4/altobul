@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Services\Storage\SignedUrlService;
 use App\Traits\HasUuidPrimaryKey;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -44,5 +45,10 @@ class PostAttachment extends Model
     public function getUrl(): string
     {
         return config('filesystems.disks.s3.url', 'https://s3.amazonaws.com').'/'.config('filesystems.disks.s3.bucket').'/'.$this->storage_key;
+    }
+
+    public function getSignedUrl(User $viewer): string
+    {
+        return app(SignedUrlService::class)->getPostAttachmentUrl($this, $viewer);
     }
 }

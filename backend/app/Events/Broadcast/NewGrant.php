@@ -2,6 +2,8 @@
 
 namespace App\Events\Broadcast;
 
+use App\Models\PhotoAccess;
+use App\Models\PostAccess;
 use App\Models\ProfileFieldValue;
 use App\Models\ProfileFieldValueAccess;
 use App\Models\User;
@@ -16,8 +18,8 @@ class NewGrant implements ShouldBroadcast
     use Dispatchable, InteractsWithSockets, SerializesModels;
 
     public function __construct(
-        public ProfileFieldValueAccess $grant,
-        public ProfileFieldValue $fieldValue,
+        public ProfileFieldValueAccess|PhotoAccess|PostAccess $grant,
+        public ProfileFieldValue|Photo|Post|null $resource,
         public User $grantee,
         public User $grantedBy,
     ) {}
@@ -36,23 +38,32 @@ class NewGrant implements ShouldBroadcast
 
     public function broadcastWith(): array
     {
+        $resourceType = match (true) {
+            $this->resource instanceof \App\Models\Photo => 'photo',
+            $this->resource instanceof \App\Models\Post => 'post',
+            default => 'profile_field',
+        };
+
+        $resourceId = match (true) {
+            $this->resource instanceof \App\Models\Photo => $this->resource->id,
+            $this->resource instanceof \App\Models\Post => $this->resource->id,
+            default => $this->resource?->id,
+        };
+
         return [
             'grant' => [
                 'id' => $this->grant->id,
-                'field_value_id' => $this->grant->field_value_id,
+                'resource_type' => $resourceType,
+                'resource_id' => $resourceId,
                 'granted_by' => [
                     'id' => $this->grantedBy->id,
                 ],
                 'granted_at' => $this->grant->granted_at?->toISOString(),
                 'expires_at' => $this->grant->expires_at?->toISOString(),
             ],
-            'field_value' => [
-                'id' => $this->fieldValue->id,
-                'field' => $this->fieldValue->field ? [
-                    'id' => $this->fieldValue->field->id,
-                    'slug' => $this->fieldValue->field->slug,
-                    'name' => $this->fieldValue->field->name,
-                ] : null,
+            'resource' => [
+                'type' => $resourceType,
+                'id' => $resourceId,
             ],
         ];
     }

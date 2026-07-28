@@ -8,6 +8,9 @@ use App\Http\Controllers\Admin\ProfileFieldDefinitionController;
 use App\Http\Controllers\Admin\VerificationController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\BlockController;
+use App\Http\Controllers\Client\DiscoveryController;
+use App\Http\Controllers\Client\PhotoGrantController;
+use App\Http\Controllers\Client\PostGrantController;
 use App\Http\Controllers\ConversationController;
 use App\Http\Controllers\FriendshipController;
 use App\Http\Controllers\FriendshipRequestController;
@@ -79,7 +82,7 @@ Route::prefix('client')
         });
 
         // Tokes
-        Route::middleware('auth:sanctum')->group(function () {
+        Route::middleware(['auth:sanctum', 'verified', 'throttle:api-sensitive'])->group(function () {
             Route::post('tokes', [TokeController::class, 'store']);
             Route::get('tokes', [TokeController::class, 'index']);
             Route::post('tokes/{toke}/consume', [TokeController::class, 'consume']);
@@ -87,20 +90,20 @@ Route::prefix('client')
         });
 
         // Matches
-        Route::middleware('auth:sanctum')->group(function () {
+        Route::middleware(['auth:sanctum', 'verified'])->group(function () {
             Route::get('matches', [MatchController::class, 'index']);
             Route::post('matches/{match}/convert-to-friendship', [MatchController::class, 'convertToFriendship']);
         });
 
         // Friendships
-        Route::middleware('auth:sanctum')->group(function () {
+        Route::middleware(['auth:sanctum', 'verified'])->group(function () {
             Route::get('friendships', [FriendshipController::class, 'index']);
             Route::post('friendships', [FriendshipController::class, 'store']);
             Route::delete('friendships/{friendship}', [FriendshipController::class, 'destroy']);
         });
 
         // Friendship Requests
-        Route::middleware('auth:sanctum')->group(function () {
+        Route::middleware(['auth:sanctum', 'verified'])->group(function () {
             Route::get('friendship-requests', [FriendshipRequestController::class, 'index']);
             Route::post('friendship-requests', [FriendshipRequestController::class, 'store']);
             Route::post('friendship-requests/{friendshipRequest}/accept', [FriendshipRequestController::class, 'accept']);
@@ -108,40 +111,62 @@ Route::prefix('client')
         });
 
         // Blocks
-        Route::middleware('auth:sanctum')->group(function () {
+        Route::middleware(['auth:sanctum', 'verified'])->group(function () {
             Route::get('blocks', [BlockController::class, 'index']);
             Route::post('blocks', [BlockController::class, 'store']);
             Route::delete('blocks/{block}', [BlockController::class, 'destroy']);
         });
 
         // Conversations
-        Route::middleware('auth:sanctum')->group(function () {
+        Route::middleware(['auth:sanctum', 'verified'])->group(function () {
             Route::get('conversations', [ConversationController::class, 'index']);
-            Route::post('conversations', [ConversationController::class, 'store']);
+            Route::post('conversations', [ConversationController::class, 'store'])->middleware('throttle:api-sensitive');
             Route::get('conversations/{conversation}', [ConversationController::class, 'show']);
             Route::delete('conversations/{conversation}', [ConversationController::class, 'destroy']);
         });
 
         // Messages
-        Route::middleware('auth:sanctum')->group(function () {
+        Route::middleware(['auth:sanctum', 'verified'])->group(function () {
             Route::get('conversations/{conversation}/messages', [MessageController::class, 'index']);
-            Route::post('conversations/{conversation}/messages', [MessageController::class, 'store']);
+            Route::post('conversations/{conversation}/messages', [MessageController::class, 'store'])->middleware('throttle:api-messages');
         });
 
         // Photos
-        Route::middleware('auth:sanctum')->group(function () {
+        Route::middleware(['auth:sanctum', 'verified'])->group(function () {
             Route::get('photos', [PhotoController::class, 'index']);
-            Route::post('photos', [PhotoController::class, 'store']);
+            Route::post('photos', [PhotoController::class, 'store'])->middleware('throttle:api-sensitive');
             Route::get('photos/{photo}', [PhotoController::class, 'show']);
             Route::delete('photos/{photo}', [PhotoController::class, 'destroy']);
+
+            // Photo Grants (for PRIVATE photos)
+            Route::prefix('photos/{photo}/grants')->group(function () {
+                Route::get('/', [PhotoGrantController::class, 'index']);
+                Route::post('/', [PhotoGrantController::class, 'store']);
+                Route::delete('{grantee}', [PhotoGrantController::class, 'destroy']);
+            });
+        });
+
+        // Discovery
+        Route::middleware(['auth:sanctum', 'verified'])->group(function () {
+            Route::get('discover', [DiscoveryController::class, 'index']);
+            Route::get('discover/online', [DiscoveryController::class, 'online']);
+            Route::get('discover/recent', [DiscoveryController::class, 'recent']);
+            Route::get('discover/nearby', [DiscoveryController::class, 'nearby']);
         });
 
         // Posts
-        Route::middleware('auth:sanctum')->group(function () {
+        Route::middleware(['auth:sanctum', 'verified'])->group(function () {
             Route::get('posts', [PostController::class, 'index']);
-            Route::post('posts', [PostController::class, 'store']);
+            Route::post('posts', [PostController::class, 'store'])->middleware('throttle:api-sensitive');
             Route::get('posts/{post}', [PostController::class, 'show']);
             Route::delete('posts/{post}', [PostController::class, 'destroy']);
+
+            // Post Grants (for PRIVATE posts)
+            Route::prefix('posts/{post}/grants')->group(function () {
+                Route::get('/', [PostGrantController::class, 'index']);
+                Route::post('/', [PostGrantController::class, 'store']);
+                Route::delete('{grantee}', [PostGrantController::class, 'destroy']);
+            });
         });
     });
 

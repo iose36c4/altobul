@@ -51,8 +51,6 @@ class Profile extends Model
         'profile_requires_verified' => 'boolean',
     ];
 
-    protected $appends = ['longitude', 'latitude'];
-
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class, 'user_id', 'id');

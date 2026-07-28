@@ -63,7 +63,7 @@ class ProcessPhotoJob implements ShouldQueue
 
             $s3Key = "users/{$photo->user_id}/{$photo->id}.webp";
 
-            Storage::disk('s3')->put($s3Key, $webpContents, 'public');
+            Storage::disk('s3')->put($s3Key, $webpContents, 'private');
 
             $photo->update([
                 'storage_key' => $s3Key,

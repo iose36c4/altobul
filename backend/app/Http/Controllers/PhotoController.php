@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Exceptions\PhotoLimitReachedException;
 use App\Http\Resources\PhotoResource;
+use App\Jobs\ProcessPhotoDeletionJob;
 use App\Models\Photo;
 use App\Services\Authorization\AuthorizationService;
 use App\Services\Photo\PhotoService;
@@ -108,7 +109,13 @@ class PhotoController extends Controller
             ], 422);
         }
 
+        $storageKey = $photo->storage_key;
+
         $photo->update(['status' => 'DELETED']);
+
+        if ($storageKey && str_starts_with($storageKey, 'users/')) {
+            ProcessPhotoDeletionJob::dispatch($storageKey);
+        }
 
         return response()->json([
             'photo' => new PhotoResource($photo->fresh()),

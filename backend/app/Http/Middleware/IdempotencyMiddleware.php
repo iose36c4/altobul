@@ -30,7 +30,9 @@ class IdempotencyMiddleware
             return response()->json(['error' => 'Invalid Idempotency-Key format'], 400);
         }
 
-        $cacheKey = "idempotency:{$key}";
+        // Include user/API key in cache key to prevent cross-user conflicts
+        $userId = $request->user()?->id ?? $request->attributes->get('api_key_id') ?? 'anonymous';
+        $cacheKey = "idempotency:{$userId}:{$key}";
 
         // Check if we have a cached response
         if (Cache::has($cacheKey)) {

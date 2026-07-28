@@ -7,6 +7,7 @@ use App\Models\GeoZone;
 use App\Models\User;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
 
 class GlobalZoneSeeder extends Seeder
@@ -18,7 +19,7 @@ class GlobalZoneSeeder extends Seeder
             ['email' => 'geo-admin@example.com'],
             [
                 'id' => (string) Str::uuid(),
-                'password_hash' => bcrypt('password'),
+                'password_hash' => Hash::make('password'),
                 'email_verified_at' => now(),
                 'verification_status' => 'not_verified',
                 'status' => 'active',
