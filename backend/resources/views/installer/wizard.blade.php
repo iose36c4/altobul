@@ -224,15 +224,6 @@
                             <dd class="text-gray-900">{{ session('install_admin.email', '—') }}</dd>
                         </dl>
                     </div>
-
-                    <div class="p-4 bg-blue-50 border border-blue-200 rounded-lg">
-                        <h3 class="font-medium text-blue-900 mb-2">Claves API</h3>
-                        <p class="text-sm text-blue-700">Se generarán automáticamente dos claves:</p>
-                        <ul class="text-sm text-blue-700 mt-1 space-y-1 list-disc list-inside">
-                            <li><strong>CLIENT</strong> — para la app cliente</li>
-                            <li><strong>ADMIN</strong> — para el panel de administración</li>
-                        </ul>
-                    </div>
                 </div>
 
                 <form method="POST" action="{{ route('install.execute') }}" id="installForm">

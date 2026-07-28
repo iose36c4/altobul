@@ -2,6 +2,8 @@
 
 namespace Tests\Feature;
 
+use App\Models\User;
+use App\Services\ApiKeyService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -40,11 +42,6 @@ class InstallTest extends TestCase
         $this->assertEquals('Backend installed successfully', $response->json('message'));
         $this->assertEquals('admin@example.com', $response->json('admin.email'));
         $this->assertEquals('admin', $response->json('admin.role'));
-
-        $this->assertNotNull($response->json('api_keys.client.raw_key'));
-        $this->assertNotNull($response->json('api_keys.admin.raw_key'));
-        $this->assertEquals('CLIENT', $response->json('api_keys.client.type'));
-        $this->assertEquals('ADMIN', $response->json('api_keys.admin.type'));
     }
 
     public function test_installer_rejects_invalid_data(): void
@@ -61,14 +58,12 @@ class InstallTest extends TestCase
 
     public function test_installer_cannot_be_repeated(): void
     {
-        // First install
         $this->postJson('/api/install', [
             'email' => 'admin@example.com',
             'password' => 'password123',
             'password_confirmation' => 'password123',
         ]);
 
-        // Second attempt should fail
         $response = $this->postJson('/api/install', [
             'email' => 'admin2@example.com',
             'password' => 'password123',
@@ -80,14 +75,12 @@ class InstallTest extends TestCase
 
     public function test_installed_backend_shows_installed(): void
     {
-        // Install first
         $this->postJson('/api/install', [
             'email' => 'admin@example.com',
             'password' => 'password123',
             'password_confirmation' => 'password123',
         ]);
 
-        // Check status
         $response = $this->getJson('/api/install');
         $this->assertEquals(200, $response->status());
         $this->assertTrue($response->json('installed'));
@@ -96,26 +89,26 @@ class InstallTest extends TestCase
 
     public function test_generated_api_keys_work(): void
     {
-        // Install
-        $installResponse = $this->postJson('/api/install', [
+        $this->postJson('/api/install', [
             'email' => 'admin@example.com',
             'password' => 'password123',
             'password_confirmation' => 'password123',
         ]);
 
-        $clientKey = $installResponse->json('api_keys.client.raw_key');
-        $adminKey = $installResponse->json('api_keys.admin.raw_key');
+        $admin = User::where('email', 'admin@example.com')->first();
+        $keyService = app(ApiKeyService::class);
 
-        // Test client key on client login endpoint
-        $response = $this->withHeader('X-API-Key', $clientKey)
+        $clientResult = $keyService->createApiKey($admin, 'Client Test', 'CLIENT');
+        $adminResult = $keyService->createApiKey($admin, 'Admin Test', 'ADMIN');
+
+        $response = $this->withHeader('X-API-Key', $clientResult['raw_key'])
             ->postJson('/api/client/auth/login', [
                 'email' => 'admin@example.com',
                 'password' => 'password123',
             ]);
         $this->assertEquals(200, $response->status());
 
-        // Test admin key on admin login endpoint
-        $response = $this->withHeader('X-API-Key', $adminKey)
+        $response = $this->withHeader('X-API-Key', $adminResult['raw_key'])
             ->postJson('/api/admin/auth/login', [
                 'email' => 'admin@example.com',
                 'password' => 'password123',

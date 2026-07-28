@@ -4,7 +4,6 @@ namespace App\Http\Controllers;
 
 use App\Models\AppConfig;
 use App\Models\User;
-use App\Services\ApiKeyService;
 use Illuminate\Database\Connection;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
@@ -17,10 +16,6 @@ use Illuminate\View\View;
 
 class InstallController extends Controller
 {
-    public function __construct(
-        private ApiKeyService $apiKeyService,
-    ) {}
-
     public function show(Request $request): View|JsonResponse
     {
         $config = $this->getConfig();
@@ -220,9 +215,6 @@ class InstallController extends Controller
 
             $admin = User::find($userId);
 
-            $clientKey = $this->apiKeyService->createApiKey($admin, 'Client Production', 'CLIENT');
-            $adminKey = $this->apiKeyService->createApiKey($admin, 'Admin Production', 'ADMIN');
-
             $config->set('installed', true);
             $config->set('installed_at', now()->toISOString());
             $config->set('first_admin_id', $admin->id);
@@ -236,18 +228,6 @@ class InstallController extends Controller
                 'admin' => [
                     'email' => $admin->email,
                     'role' => $admin->role,
-                ],
-                'api_keys' => [
-                    [
-                        'name' => $clientKey['api_key']->name,
-                        'type' => $clientKey['api_key']->type,
-                        'raw_key' => $clientKey['raw_key'],
-                    ],
-                    [
-                        'name' => $adminKey['api_key']->name,
-                        'type' => $adminKey['api_key']->type,
-                        'raw_key' => $adminKey['raw_key'],
-                    ],
                 ],
             ];
 
@@ -334,9 +314,6 @@ class InstallController extends Controller
 
             $admin = User::find($userId);
 
-            $clientKey = $this->apiKeyService->createApiKey($admin, 'Client Production', 'CLIENT');
-            $adminKey = $this->apiKeyService->createApiKey($admin, 'Admin Production', 'ADMIN');
-
             $config->set('installed', true);
             $config->set('installed_at', now()->toISOString());
             $config->set('first_admin_id', $admin->id);
@@ -350,18 +327,6 @@ class InstallController extends Controller
                     'id' => $admin->id,
                     'email' => $admin->email,
                     'role' => $admin->role,
-                ],
-                'api_keys' => [
-                    'client' => [
-                        'name' => $clientKey['api_key']->name,
-                        'type' => $clientKey['api_key']->type,
-                        'raw_key' => $clientKey['raw_key'],
-                    ],
-                    'admin' => [
-                        'name' => $adminKey['api_key']->name,
-                        'type' => $adminKey['api_key']->type,
-                        'raw_key' => $adminKey['raw_key'],
-                    ],
                 ],
             ], 201);
 
