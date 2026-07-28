@@ -37,7 +37,7 @@ class UserController extends Controller
         }
 
         $users = $query->orderBy('created_at', 'desc')
-            ->paginate($request->input('per_page', 20));
+            ->paginate(min((int) $request->input('per_page', 20), 100));
 
         return response()->json([
             'users' => UserResource::collection($users),
@@ -102,6 +102,13 @@ class UserController extends Controller
         $request->validate([
             'role' => ['required', 'string', 'in:user,admin'],
         ]);
+
+        if ($user->id === $request->user()->id) {
+            return response()->json([
+                'error' => 'Forbidden',
+                'message' => 'Cannot change your own role',
+            ], 403);
+        }
 
         if ($user->role === $request->input('role')) {
             return response()->json([

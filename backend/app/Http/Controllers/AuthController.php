@@ -169,7 +169,7 @@ class AuthController extends Controller
 
         $requests = VerificationRequest::with('user.profile', 'reviewedBy')
             ->latest('submitted_at')
-            ->paginate($request->input('per_page', 20));
+            ->paginate(min((int) $request->input('per_page', 20), 100));
 
         return response()->json([
             'requests' => $requests->map(fn ($r) => [

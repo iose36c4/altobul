@@ -40,7 +40,6 @@ class NewMessage implements ShouldBroadcast
                 'content' => $this->message->content,
                 'sender' => $this->message->sender ? [
                     'id' => $this->message->sender->id,
-                    'email' => $this->message->sender->email,
                     'profile' => $this->message->sender->profile ? [
                         'title' => $this->message->sender->profile->title,
                     ] : null,

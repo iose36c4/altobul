@@ -15,7 +15,7 @@ class GeoZoneController extends Controller
     {
         $zones = GeoZone::with('polygons')
             ->orderBy('name')
-            ->paginate($request->query('per_page', 20));
+            ->paginate(min((int) $request->query('per_page', 20), 100));
 
         return response()->json([
             'zones' => $zones->map(fn ($z) => [

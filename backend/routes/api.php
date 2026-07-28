@@ -35,7 +35,8 @@ Route::prefix('client')
                 ->middleware('throttle:login');
             Route::post('forgot-password', [AuthController::class, 'forgotPassword'])
                 ->middleware('throttle:password-reset');
-            Route::post('reset-password', [AuthController::class, 'resetPassword']);
+            Route::post('reset-password', [AuthController::class, 'resetPassword'])
+                ->middleware('throttle:password-reset');
 
             // Email verification - only needs signed URL + API key, no auth token
             Route::get('verify-email/{id}/{hash}', [AuthController::class, 'verifyEmail'])
@@ -156,7 +157,8 @@ Route::prefix('admin')
                 ->middleware('throttle:login');
             Route::post('forgot-password', [AuthController::class, 'forgotPassword'])
                 ->middleware('throttle:password-reset');
-            Route::post('reset-password', [AuthController::class, 'resetPassword']);
+            Route::post('reset-password', [AuthController::class, 'resetPassword'])
+                ->middleware('throttle:password-reset');
 
             // Email verification - only needs signed URL + API key, no auth token
             Route::get('verify-email/{id}/{hash}', [AuthController::class, 'verifyEmail'])

@@ -4,6 +4,7 @@ use App\Http\Middleware\AdminAuthorizationMiddleware;
 use App\Http\Middleware\AdminWebGuardMiddleware;
 use App\Http\Middleware\ApiKeyMiddleware;
 use App\Http\Middleware\IdempotencyMiddleware;
+use App\Http\Middleware\SecurityHeadersMiddleware;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
@@ -23,6 +24,8 @@ return Application::configure(basePath: dirname(__DIR__))
             'admin' => AdminAuthorizationMiddleware::class,
             'admin.web' => AdminWebGuardMiddleware::class,
         ]);
+
+        $middleware->prepend(SecurityHeadersMiddleware::class);
     })
     ->withProviders([
     ])

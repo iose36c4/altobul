@@ -43,7 +43,6 @@ class NewTokeReceived implements ShouldBroadcast
                 'created_at' => $this->toke->created_at?->toISOString(),
                 'sender' => $this->toke->sender ? [
                     'id' => $this->toke->sender->id,
-                    'email' => $this->toke->sender->email,
                     'profile' => $this->toke->sender->profile ? [
                         'title' => $this->toke->sender->profile->title,
                         'description' => $this->toke->sender->profile->description,

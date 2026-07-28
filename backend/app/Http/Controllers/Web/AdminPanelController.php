@@ -148,9 +148,7 @@ class AdminPanelController extends Controller
             'email' => $request->email,
         ]);
 
-        // Always show the link in the page (dev convenience + production email)
-        return back()->with('status', 'Si el email existe en el sistema, recibirás un enlace para restablecer tu contraseña.')
-            ->with('dev_reset_url', $resetUrl);
+        return back()->with('status', 'Si el email existe en el sistema, recibirás un enlace para restablecer tu contraseña.');
     }
 
     public function showResetPassword(Request $request): View

@@ -23,7 +23,7 @@ class ApiKeyController extends Controller
 
         $keys = ApiKey::with('creator')
             ->orderBy('created_at', 'desc')
-            ->paginate($request->input('per_page', 20));
+            ->paginate(min((int) $request->input('per_page', 20), 100));
 
         return response()->json([
             'api_keys' => ApiKeyResource::collection($keys),

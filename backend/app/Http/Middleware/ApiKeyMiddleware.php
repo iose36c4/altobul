@@ -16,7 +16,6 @@ class ApiKeyMiddleware
         $apiKeyHeader = $request->header('X-API-Key');
 
         Log::debug('API Key Middleware START', [
-            'header' => $apiKeyHeader ? substr($apiKeyHeader, 0, 4).'****' : null,
             'expected_type' => $expectedType,
             'path' => $request->path(),
         ]);
@@ -43,17 +42,13 @@ class ApiKeyMiddleware
 
         $prefix = substr($apiKeyHeader, 0, 8);
 
-        Log::debug('API Key Middleware - LOOKING UP', ['prefix' => $prefix]);
+        Log::debug('API Key Middleware - LOOKING UP');
 
         // First check if key exists at all (regardless of type)
         $apiKey = ApiKey::where('key_prefix', $prefix)->first();
 
         Log::debug('API Key Middleware - LOOKUP RESULT', [
             'found' => $apiKey ? true : false,
-            'api_key_type' => $apiKey?->type,
-            'api_key_valid' => $apiKey?->isValid(),
-            'api_key_revoked' => $apiKey?->isRevoked(),
-            'api_key_expired' => $apiKey?->isExpired(),
         ]);
 
         if (! $apiKey) {
@@ -79,17 +74,12 @@ class ApiKeyMiddleware
 
         // Check type match
         if ($apiKey->type !== $expectedType) {
-            Log::debug('API Key Middleware - TYPE MISMATCH', [
-                'provided_type' => $apiKey->type,
-                'expected_type' => $expectedType,
-            ]);
+            Log::debug('API Key Middleware - TYPE MISMATCH');
 
             return response()->json([
                 'error' => 'API key type mismatch',
-                'message' => "API key type '{$apiKey->type}' is not authorized for this endpoint. Required: {$expectedType}",
+                'message' => 'API key is not authorized for this endpoint',
                 'code' => 'API_KEY_TYPE_MISMATCH',
-                'provided_type' => $apiKey->type,
-                'required_type' => $expectedType,
             ], 403);
         }
 

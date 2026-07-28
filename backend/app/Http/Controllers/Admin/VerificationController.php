@@ -21,7 +21,7 @@ class VerificationController extends Controller
         $requests = VerificationRequest::with('user.profile')
             ->where('status', $status)
             ->orderBy('submitted_at')
-            ->paginate($request->query('per_page', 20));
+            ->paginate(min((int) $request->query('per_page', 20), 100));
 
         return response()->json([
             'requests' => $requests->map(fn ($r) => [

@@ -42,7 +42,6 @@ class NewGrant implements ShouldBroadcast
                 'field_value_id' => $this->grant->field_value_id,
                 'granted_by' => [
                     'id' => $this->grantedBy->id,
-                    'email' => $this->grantedBy->email,
                 ],
                 'granted_at' => $this->grant->granted_at?->toISOString(),
                 'expires_at' => $this->grant->expires_at?->toISOString(),

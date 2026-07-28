@@ -2,15 +2,18 @@
 
 namespace App\Http\Resources;
 
+use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
 class UserResource extends JsonResource
 {
-    public function toArray($request): array
+    public function toArray(Request $request): array
     {
-        return [
+        $isSelf = $request->user() && $request->user()->id === $this->id;
+        $isAdmin = $request->user() && $request->user()->isAdmin();
+
+        $data = [
             'id' => $this->id,
-            'email' => $this->email,
             'role' => $this->role,
             'status' => $this->status,
             'verification_status' => $this->verification_status,
@@ -22,5 +25,11 @@ class UserResource extends JsonResource
             'created_at' => $this->created_at?->toISOString(),
             'profile' => $this->whenLoaded('profile', fn () => new ProfileResource($this->profile)),
         ];
+
+        if ($isSelf || $isAdmin) {
+            $data['email'] = $this->email;
+        }
+
+        return $data;
     }
 }

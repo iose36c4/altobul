@@ -28,13 +28,13 @@ Route::prefix('admin')->name('admin.')->group(function () {
         ->middleware('guest');
     Route::post('/login', [AdminPanelController::class, 'login'])
         ->name('login.post')
-        ->middleware('guest');
+        ->middleware(['guest', 'throttle:login']);
     Route::get('/forgot-password', [AdminPanelController::class, 'showForgotPassword'])
         ->name('forgot-password')
         ->middleware('guest');
     Route::post('/forgot-password', [AdminPanelController::class, 'sendResetLink'])
         ->name('forgot-password.post')
-        ->middleware('guest');
+        ->middleware(['guest', 'throttle:password-reset']);
     Route::get('/reset-password', [AdminPanelController::class, 'showResetPassword'])
         ->name('reset-password')
         ->middleware('guest');

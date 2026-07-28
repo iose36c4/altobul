@@ -61,7 +61,6 @@ class NewFriendship implements ShouldBroadcast
             ],
             'other_user' => [
                 'id' => $other->id,
-                'email' => $other->email,
                 'profile' => $other->profile ? [
                     'title' => $other->profile->title,
                     'description' => $other->profile->description,
