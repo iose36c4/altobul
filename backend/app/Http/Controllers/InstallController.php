@@ -14,7 +14,6 @@ use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Str;
 use Illuminate\View\View;
-use Symfony\Component\Dotenv\Dotenv;
 
 class InstallController extends Controller
 {
@@ -506,22 +505,18 @@ class InstallController extends Controller
 
         file_put_contents($envPath, $envContent);
 
-        $this->resetDatabaseConfig();
+        $this->resetDatabaseConfig($data);
     }
 
-    private function resetDatabaseConfig(): void
+    private function resetDatabaseConfig(array $data): void
     {
-        if (file_exists(base_path('.env'))) {
-            (new Dotenv)->overload(base_path('.env'));
-        }
-
         $dbConfig = [
             'driver' => 'pgsql',
-            'host' => env('DB_HOST', '127.0.0.1'),
-            'port' => (int) env('DB_PORT', 5432),
-            'database' => env('DB_DATABASE'),
-            'username' => env('DB_USERNAME'),
-            'password' => env('DB_PASSWORD'),
+            'host' => $data['db_host'],
+            'port' => (int) $data['db_port'],
+            'database' => $data['db_database'],
+            'username' => $data['db_username'],
+            'password' => $data['db_password'],
             'charset' => 'utf8',
             'prefix' => '',
             'prefix_indexes' => true,
