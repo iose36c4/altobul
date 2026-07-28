@@ -143,4 +143,9 @@ class User extends Authenticatable
     {
         return $this->role === 'admin';
     }
+
+    public function getAuthPassword(): string
+    {
+        return $this->password_hash;
+    }
 }

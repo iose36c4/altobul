@@ -1,6 +1,8 @@
 <?php
 
 use App\Http\Controllers\InstallController;
+use App\Http\Controllers\Web\AdminPanelController;
+use App\Http\Middleware\AdminWebGuardMiddleware;
 use App\Http\Middleware\InstallerGuardMiddleware;
 use Illuminate\Support\Facades\Route;
 
@@ -18,3 +20,22 @@ Route::prefix('install')
         Route::post('/save-admin', [InstallController::class, 'saveAdmin'])->name('install.save-admin');
         Route::post('/execute', [InstallController::class, 'execute'])->name('install.execute');
     });
+
+// Admin Panel — session-based login for managing API keys
+Route::prefix('admin')->name('admin.')->group(function () {
+    Route::get('/login', [AdminPanelController::class, 'showLogin'])
+        ->name('login')
+        ->middleware('guest');
+    Route::post('/login', [AdminPanelController::class, 'login'])
+        ->name('login.post')
+        ->middleware('guest');
+    Route::post('/logout', [AdminPanelController::class, 'logout'])
+        ->name('logout');
+
+    Route::middleware(AdminWebGuardMiddleware::class)->group(function () {
+        Route::get('/', [AdminPanelController::class, 'dashboard'])->name('dashboard');
+        Route::get('/api-keys/create', [AdminPanelController::class, 'createKeyShow'])->name('keys.create');
+        Route::post('/api-keys', [AdminPanelController::class, 'createKey'])->name('keys.store');
+        Route::delete('/api-keys/{apiKey}', [AdminPanelController::class, 'destroyKey'])->name('keys.destroy');
+    });
+});

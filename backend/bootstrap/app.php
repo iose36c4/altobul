@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Middleware\AdminAuthorizationMiddleware;
+use App\Http\Middleware\AdminWebGuardMiddleware;
 use App\Http\Middleware\ApiKeyMiddleware;
 use App\Http\Middleware\IdempotencyMiddleware;
 use Illuminate\Foundation\Application;
@@ -20,6 +21,7 @@ return Application::configure(basePath: dirname(__DIR__))
             'idempotency' => IdempotencyMiddleware::class,
             'api.key' => ApiKeyMiddleware::class,
             'admin' => AdminAuthorizationMiddleware::class,
+            'admin.web' => AdminWebGuardMiddleware::class,
         ]);
     })
     ->withProviders([
