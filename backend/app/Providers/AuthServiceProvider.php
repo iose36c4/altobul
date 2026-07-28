@@ -1,3 +1,7 @@
+<?php
+
+namespace App\Providers;
+
 use App\Models\Block;
 use App\Models\Conversation;
 use App\Models\Friendship;
@@ -14,7 +18,6 @@ use App\Policies\BlockPolicy;
 use App\Policies\ConversationPolicy;
 use App\Policies\FriendshipPolicy;
 use App\Policies\FriendshipRequestPolicy;
-use App\Policies\MatchPolicy;
 use App\Policies\PhotoPolicy;
 use App\Policies\PostPolicy;
 use App\Policies\ProfileFieldValueAccessPolicy;
@@ -24,7 +27,6 @@ use App\Policies\UserMatchPolicy;
 use App\Policies\UserPolicy;
 use App\Policies\VerificationRequestPolicy;
 use Illuminate\Foundation\Support\Providers\AuthServiceProvider as ServiceProvider;
-use Illuminate\Support\Facades\Gate;
 
 class AuthServiceProvider extends ServiceProvider
 {

@@ -122,7 +122,7 @@ class FriendshipRequestController extends Controller
             ], 422);
         }
 
-        $friendshipRequest->update(['status' => $canCancel ? 'REJECTED' : 'REJECTED']);
+        $friendshipRequest->update(['status' => 'REJECTED']);
 
         return response()->json([
             'friendship_request' => new FriendshipRequestResource($friendshipRequest->fresh()),

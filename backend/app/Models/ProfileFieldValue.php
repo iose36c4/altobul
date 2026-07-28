@@ -73,4 +73,25 @@ class ProfileFieldValue extends Model
     {
         return $this->requires_verified_override ?? $this->field->default_requires_verified;
     }
+
+    public function getValue(): mixed
+    {
+        return match ($this->field->type) {
+            'TEXT', 'TEXTAREA' => $this->value_text,
+            'NUMBER' => $this->value_number !== null ? (float) $this->value_number : null,
+            'BOOLEAN' => $this->value_boolean,
+            'DATE' => $this->value_date?->format('Y-m-d'),
+            'SELECT', 'RADIO', 'MULTISELECT' => $this->selectedOptions->pluck('value')->toArray(),
+            default => $this->value_text,
+        };
+    }
+
+    public function getDisplayValue(): mixed
+    {
+        return match ($this->field->type) {
+            'SELECT', 'RADIO' => $this->selectedOptions->first()?->label,
+            'MULTISELECT' => $this->selectedOptions->pluck('label')->filter()->toArray(),
+            default => $this->getValue(),
+        };
+    }
 }

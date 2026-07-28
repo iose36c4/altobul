@@ -34,4 +34,9 @@ class ProfileFieldValueAccessPolicy
     {
         return $this->authz->canViewProfileField($user, $fieldValue->profile->user, $fieldValue->field->slug)->allowed;
     }
+
+    public function manageGrants(User $user, ProfileFieldValue $fieldValue): bool
+    {
+        return $user->id === $fieldValue->profile->user_id;
+    }
 }

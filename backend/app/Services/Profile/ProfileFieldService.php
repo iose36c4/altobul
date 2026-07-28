@@ -6,7 +6,6 @@ use App\Models\Profile;
 use App\Models\ProfileFieldDefinition;
 use App\Models\ProfileFieldOption;
 use App\Models\ProfileFieldValue;
-use App\Models\ProfileFieldValueOption;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
@@ -28,10 +27,10 @@ class ProfileFieldService
             if (in_array($field->type, ['SELECT', 'MULTISELECT', 'RADIO']) && $input) {
                 $optionIds = $this->getOptionIdsForInput($field, $input);
 
-                ProfileFieldValueOption::where('field_value_id', $value->id)->delete();
+                DB::table('profile_field_value_options')->where('field_value_id', $value->id)->delete();
 
                 foreach ($optionIds as $optionId) {
-                    ProfileFieldValueOption::create([
+                    DB::table('profile_field_value_options')->insert([
                         'field_value_id' => $value->id,
                         'option_id' => $optionId,
                     ]);

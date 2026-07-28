@@ -30,10 +30,8 @@ class ConfigController extends Controller
                     'updated_at' => now(),
                 ]
             );
+            Cache::forget("app_config.{$key}");
         }
-
-        // Clear cache
-        Cache::flush();
 
         return response()->json([
             'message' => 'Configuration updated successfully',

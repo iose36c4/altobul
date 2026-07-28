@@ -87,9 +87,9 @@ class GeoZoneService
 
     public function getUsersInZone(GeoZone $zone, int $limit = 50)
     {
-        return Profile::whereHas('geoPolygons', function ($q) use ($zone) {
-            $q->whereRaw('ST_Within(profiles.location::geometry, geo_polygons.geom::geometry)')
-                ->where('geo_polygons.zone_id', $zone->id);
-        })->limit($limit)->get();
+        return Profile::whereRaw(
+            'EXISTS (SELECT 1 FROM geo_polygons WHERE zone_id = ? AND ST_Within(profiles.location::geometry, geo_polygons.geom::geometry))',
+            [$zone->id]
+        )->limit($limit)->get();
     }
 }

@@ -384,7 +384,8 @@ class AuthorizationService implements AuthorizationServiceInterface
 
         // Only PRIVATE resources can have grants
         $visibility = $resource->visibility ?? ($resource->default_visibility ?? null);
-        if ($visibility !== VisibilityLevel::PRIVATE) {
+        $visibilityLevel = is_string($visibility) ? VisibilityLevel::tryFrom($visibility) : $visibility;
+        if ($visibilityLevel !== VisibilityLevel::PRIVATE) {
             return AuthorizationResult::denied(AuthorizationReason::INVALID_STATE_TRANSITION);
         }
 

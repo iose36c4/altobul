@@ -36,7 +36,7 @@ class AdminPanelController extends Controller
 
         $user = User::where('email', $credentials['email'])->first();
 
-        if (! $user || ! Auth::getProvider()->retrieveByCredentials($credentials)) {
+        if (! $user || ! Hash::check($credentials['password'], $user->getAuthPassword())) {
             return back()->withErrors(['email' => 'Credenciales inválidas'])->withInput();
         }
 

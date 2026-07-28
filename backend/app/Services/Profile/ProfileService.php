@@ -36,10 +36,13 @@ class ProfileService
         $lng = (float) $data['longitude'];
         $precision = $data['precision_meters'] ?? config('app.location_default_precision_meters', 1000);
 
-        $profile->update([
-            'location' => DB::raw("ST_SetSRID(ST_MakePoint({$lng}, {$lat}), 4326)::geography"),
-            'location_precision_meters' => $precision,
-        ]);
+        DB::table('profiles')
+            ->where('user_id', $user->id)
+            ->update([
+                'location' => DB::raw("ST_SetSRID(ST_MakePoint({$lng}, {$lat}), 4326)::geography"),
+                'location_precision_meters' => $precision,
+                'updated_at' => now(),
+            ]);
 
         return $profile->fresh();
     }

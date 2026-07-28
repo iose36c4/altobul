@@ -65,24 +65,6 @@ class ProfileFieldValueAccessController extends Controller
             ->first();
 
         if ($existing) {
-            // Reactivate if revoked
-            if ($existing->revoked_at) {
-                $existing->update([
-                    'revoked_at' => null,
-                    'expires_at' => $request->input('expires_at'),
-                    'granted_by' => $user->id,
-                    'granted_at' => now(),
-                ]);
-
-                // Broadcast event
-                broadcast(new NewGrant($existing->load(['grantee', 'grantedBy', 'fieldValue']), $fieldValue, $grantee, $user));
-
-                return response()->json([
-                    'grant' => new ProfileFieldValueAccessResource($existing->load(['grantee.profile', 'grantedBy'])),
-                    'message' => 'Grant reactivated',
-                ]);
-            }
-
             return response()->json([
                 'error' => 'Conflict',
                 'message' => 'Grant already exists for this user',

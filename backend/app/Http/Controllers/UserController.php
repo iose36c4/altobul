@@ -18,11 +18,14 @@ class UserController extends Controller
 
         $viewer = request()->user();
         $profile = $user->profile;
-        $profile->load('fieldValues.field.selectedOptions');
+
+        if ($profile) {
+            $profile->load('fieldValues.field.selectedOptions');
+        }
 
         return response()->json([
             'user' => new UserResource($user),
-            'profile' => new PublicProfileResource($profile, app(AuthorizationService::class), $viewer),
+            'profile' => $profile ? new PublicProfileResource($profile, app(AuthorizationService::class), $viewer) : null,
         ]);
     }
 

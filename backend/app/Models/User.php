@@ -2,7 +2,7 @@
 
 namespace App\Models;
 
-use App\Models\Match as MatchModel;
+use App\Models\UserMatch as MatchModel;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\Hidden;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
