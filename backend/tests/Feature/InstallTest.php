@@ -75,8 +75,7 @@ class InstallTest extends TestCase
             'password_confirmation' => 'password123',
         ]);
 
-        $this->assertEquals(400, $response->status());
-        $this->assertEquals('Already installed', $response->json('error'));
+        $this->assertEquals(403, $response->status());
     }
 
     public function test_installed_backend_shows_installed(): void

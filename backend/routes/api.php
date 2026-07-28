@@ -20,6 +20,7 @@ use App\Http\Controllers\Profile\ProfileFieldValueAccessController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\TokeController;
 use App\Http\Controllers\UserController;
+use App\Http\Middleware\InstallerGuardMiddleware;
 use Illuminate\Support\Facades\Route;
 
 // CLIENT API - Requires CLIENT API Key
@@ -212,6 +213,7 @@ Route::prefix('admin')
 // Backend Installer Routes (for initial setup)
 Route::prefix('install')->group(function () {
     Route::get('/', [InstallController::class, 'show']);
-    Route::post('/', [InstallController::class, 'install'])->middleware('throttle:install');
+    Route::post('/', [InstallController::class, 'install'])
+        ->middleware(['throttle:install', InstallerGuardMiddleware::class]);
     Route::get('status', [InstallController::class, 'status']);
 });
