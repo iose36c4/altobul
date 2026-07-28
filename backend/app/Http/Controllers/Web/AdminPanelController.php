@@ -82,14 +82,32 @@ class AdminPanelController extends Controller
             'expires_in_days' => ['nullable', 'integer', 'min:1', 'max:3650'],
         ]);
 
-        $this->apiKeyService->createApiKey(
+        $result = $this->apiKeyService->createApiKey(
             Auth::user(),
             $validated['name'],
             $validated['type'],
             $validated['expires_in_days'] ?? null,
         );
 
-        return redirect()->route('admin.dashboard')->with('success', 'Clave API creada. No olvides copiarla.');
+        return redirect()->route('admin.keys.show-created')
+            ->with('new_key', $result['raw_key'])
+            ->with('new_key_name', $validated['name'])
+            ->with('new_key_type', $validated['type']);
+    }
+
+    public function showCreated(): View
+    {
+        $rawKey = session('new_key');
+
+        if (! $rawKey) {
+            return redirect()->route('admin.dashboard');
+        }
+
+        return view('admin.key-created', [
+            'rawKey' => $rawKey,
+            'keyName' => session('new_key_name'),
+            'keyType' => session('new_key_type'),
+        ]);
     }
 
     public function createKeyShow(): View

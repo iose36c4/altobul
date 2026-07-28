@@ -48,6 +48,7 @@ Route::prefix('admin')->name('admin.')->group(function () {
         Route::get('/', [AdminPanelController::class, 'dashboard'])->name('dashboard');
         Route::get('/api-keys/create', [AdminPanelController::class, 'createKeyShow'])->name('keys.create');
         Route::post('/api-keys', [AdminPanelController::class, 'createKey'])->name('keys.store');
+        Route::get('/api-keys/created', [AdminPanelController::class, 'showCreated'])->name('keys.show-created');
         Route::delete('/api-keys/{apiKey}', [AdminPanelController::class, 'destroyKey'])->name('keys.destroy');
     });
 });
