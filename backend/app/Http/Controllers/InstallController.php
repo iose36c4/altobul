@@ -6,11 +6,13 @@ use App\Models\AppConfig;
 use App\Models\User;
 use App\Services\ApiKeyService;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Str;
+use Illuminate\View\View;
 
 class InstallController extends Controller
 {
@@ -18,15 +20,26 @@ class InstallController extends Controller
         private ApiKeyService $apiKeyService,
     ) {}
 
-    public function show(): JsonResponse
+    public function show(Request $request): View|JsonResponse
     {
         $config = AppConfig::getConfig();
         $installed = $config->get('installed', false);
 
-        return response()->json([
-            'installed' => $installed,
-            'requires_installation' => ! $installed,
-        ]);
+        if ($request->expectsJson()) {
+            return response()->json([
+                'installed' => $installed,
+                'requires_installation' => ! $installed,
+            ]);
+        }
+
+        $installedAt = $config->get('installed_at');
+        $adminEmail = null;
+        if ($installed && $adminId = $config->get('first_admin_id')) {
+            $admin = User::find($adminId);
+            $adminEmail = $admin?->email;
+        }
+
+        return view('installer.index', compact('installed', 'installedAt', 'adminEmail'));
     }
 
     public function status(): JsonResponse
@@ -50,7 +63,7 @@ class InstallController extends Controller
         ]);
     }
 
-    public function install(Request $request): JsonResponse
+    public function install(Request $request): View|JsonResponse|RedirectResponse
     {
         try {
             DB::beginTransaction();
@@ -62,10 +75,14 @@ class InstallController extends Controller
             if (($config->get('installed') ?? false)) {
                 DB::rollBack();
 
-                return response()->json([
-                    'error' => 'Already installed',
-                    'message' => 'Backend is already installed. Installation cannot be repeated.',
-                ], 400);
+                if ($request->expectsJson()) {
+                    return response()->json([
+                        'error' => 'Already installed',
+                        'message' => 'Backend is already installed. Installation cannot be repeated.',
+                    ], 400);
+                }
+
+                return back()->withErrors(['general' => 'El backend ya está instalado.']);
             }
 
             $validator = Validator::make($request->all(), [
@@ -77,10 +94,14 @@ class InstallController extends Controller
             if ($validator->fails()) {
                 DB::rollBack();
 
-                return response()->json([
-                    'error' => 'Validation failed',
-                    'errors' => $validator->errors(),
-                ], 422);
+                if ($request->expectsJson()) {
+                    return response()->json([
+                        'error' => 'Validation failed',
+                        'errors' => $validator->errors(),
+                    ], 422);
+                }
+
+                return back()->withErrors($validator)->withInput();
             }
 
             $userId = (string) Str::uuid();
@@ -119,8 +140,7 @@ class InstallController extends Controller
 
             DB::commit();
 
-            return response()->json([
-                'message' => 'Backend installed successfully',
+            $data = [
                 'admin' => [
                     'id' => $admin->id,
                     'email' => $admin->email,
@@ -131,24 +151,35 @@ class InstallController extends Controller
                         'name' => $clientKey['api_key']->name,
                         'type' => $clientKey['api_key']->type,
                         'raw_key' => $clientKey['raw_key'],
-                        'warning' => 'Store this key securely. It will not be shown again.',
                     ],
                     'admin' => [
                         'name' => $adminKey['api_key']->name,
                         'type' => $adminKey['api_key']->type,
                         'raw_key' => $adminKey['raw_key'],
-                        'warning' => 'Store this key securely. It will not be shown again.',
                     ],
                 ],
-            ], 201);
+            ];
+
+            if ($request->expectsJson()) {
+                return response()->json([
+                    'message' => 'Backend installed successfully',
+                    ...$data,
+                ], 201);
+            }
+
+            return view('installer.success', $data);
 
         } catch (\Throwable) {
             DB::rollBack();
 
-            return response()->json([
-                'error' => 'Installation failed',
-                'message' => 'An unexpected error occurred during installation. Please check server logs.',
-            ], 500);
+            if ($request->expectsJson()) {
+                return response()->json([
+                    'error' => 'Installation failed',
+                    'message' => 'An unexpected error occurred during installation. Please check server logs.',
+                ], 500);
+            }
+
+            return back()->withErrors(['general' => 'Error inesperado durante la instalación. Revisa los logs del servidor.'])->withInput();
         }
     }
 
