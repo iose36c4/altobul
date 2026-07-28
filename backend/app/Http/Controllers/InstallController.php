@@ -21,7 +21,7 @@ class InstallController extends Controller
         $config = $this->getConfig();
         $installed = $config->get('installed', false);
 
-        if ($request->expectsJson()) {
+        if ($request->expectsJson() || $request->is('api/*')) {
             return response()->json([
                 'installed' => $installed,
                 'requires_installation' => ! $installed,
