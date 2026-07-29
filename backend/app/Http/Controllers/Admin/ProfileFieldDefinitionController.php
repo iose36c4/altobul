@@ -7,11 +7,16 @@ use App\Http\Requests\Admin\StoreProfileFieldDefinitionRequest;
 use App\Http\Requests\Admin\UpdateProfileFieldDefinitionRequest;
 use App\Models\ProfileFieldDefinition;
 use App\Models\ProfileFieldOption;
+use App\Services\Admin\AuditLogService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
 class ProfileFieldDefinitionController extends Controller
 {
+    public function __construct(
+        protected AuditLogService $auditLog
+    ) {}
+
     public function index(Request $request): JsonResponse
     {
         $fields = ProfileFieldDefinition::with('options')
@@ -60,6 +65,11 @@ class ProfileFieldDefinitionController extends Controller
         }
 
         $field->load('options');
+
+        $this->auditLog->log('profile_field.create', 'ProfileField', $field->id, [
+            'field_id' => $field->id,
+            'type' => $field->type,
+        ], $request->user(), $request);
 
         return response()->json([
             'field' => [
@@ -153,6 +163,10 @@ class ProfileFieldDefinitionController extends Controller
 
         $field->load('options');
 
+        $this->auditLog->log('profile_field.update', 'ProfileField', $field->id, [
+            'changes' => $data,
+        ], $request->user(), $request);
+
         return response()->json([
             'field' => [
                 'id' => $field->id,
@@ -178,7 +192,13 @@ class ProfileFieldDefinitionController extends Controller
 
     public function destroy(ProfileFieldDefinition $field): JsonResponse
     {
+        $fieldId = $field->id;
+        $fieldType = $field->type;
         $field->delete();
+
+        $this->auditLog->log('profile_field.delete', 'ProfileField', $fieldId, [
+            'field_type' => $fieldType,
+        ], request()->user(), request());
 
         return response()->json(['message' => 'Field deleted']);
     }
@@ -193,6 +213,11 @@ class ProfileFieldDefinitionController extends Controller
         foreach ($order['ids'] as $index => $id) {
             ProfileFieldDefinition::where('id', $id)->update(['sort_order' => $index]);
         }
+
+        $this->auditLog->log('profile_field.update', 'ProfileField', 'multiple', [
+            'action' => 'reorder',
+            'ids' => $order['ids'],
+        ], $request->user(), $request);
 
         return response()->json(['message' => 'Order updated']);
     }

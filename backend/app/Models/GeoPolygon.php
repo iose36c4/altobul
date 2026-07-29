@@ -52,7 +52,8 @@ class GeoPolygon extends Model
 
         static::saving(function (self $polygon) {
             if ($polygon->geometry && ! $polygon->getAttribute('geom')) {
-                $polygon->setAttribute('geom', DB::raw('ST_SetSRID(ST_GeomFromGeoJSON(?), 4326)::geography', [json_encode($polygon->geometry)]));
+                $result = DB::selectOne('SELECT ST_SetSRID(ST_GeomFromGeoJSON(?), 4326)::geography as geom', [json_encode($polygon->geometry)]);
+                $polygon->setAttribute('geom', $result->geom ?? null);
             }
         });
     }

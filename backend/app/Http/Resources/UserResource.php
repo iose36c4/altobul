@@ -11,6 +11,7 @@ class UserResource extends JsonResource
     {
         $isSelf = $request->user() && $request->user()->id === $this->id;
         $isAdmin = $request->user() && $request->user()->isAdmin();
+        $isAdminApiRequest = $request->attributes->get('api_key_type') === 'ADMIN';
 
         $data = [
             'id' => $this->id,
@@ -26,7 +27,7 @@ class UserResource extends JsonResource
             'profile' => $this->whenLoaded('profile', fn () => new ProfileResource($this->profile)),
         ];
 
-        if ($isSelf || $isAdmin) {
+        if ($isSelf || $isAdmin || $isAdminApiRequest) {
             $data['email'] = $this->email;
         }
 

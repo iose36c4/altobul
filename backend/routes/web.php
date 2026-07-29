@@ -18,6 +18,7 @@ Route::prefix('install')
         Route::post('/test-database', [InstallController::class, 'testDatabase'])->name('install.test-db');
         Route::post('/save-database', [InstallController::class, 'saveDatabase'])->name('install.save-db');
         Route::post('/save-admin', [InstallController::class, 'saveAdmin'])->name('install.save-admin');
+        Route::post('/save-media', [InstallController::class, 'saveMedia'])->name('install.save-media');
         Route::post('/execute', [InstallController::class, 'execute'])->name('install.execute');
     });
 

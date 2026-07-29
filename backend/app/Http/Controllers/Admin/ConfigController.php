@@ -5,11 +5,16 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\UpdateConfigRequest;
 use App\Models\AppConfig;
+use App\Services\Admin\AuditLogService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Cache;
 
 class ConfigController extends Controller
 {
+    public function __construct(
+        protected AuditLogService $auditLog
+    ) {}
+
     public function show(): JsonResponse
     {
         $configs = AppConfig::all()->keyBy('key')->map(fn ($c) => $c->value);
@@ -21,7 +26,13 @@ class ConfigController extends Controller
 
     public function update(UpdateConfigRequest $request): JsonResponse
     {
-        foreach ($request->validated() as $key => $value) {
+        $validated = $request->validated();
+        $changes = [];
+
+        foreach ($validated as $key => $value) {
+            $oldConfig = AppConfig::where('key', $key)->first();
+            $oldValue = $oldConfig?->value;
+
             AppConfig::updateOrInsert(
                 ['key' => $key],
                 [
@@ -31,6 +42,15 @@ class ConfigController extends Controller
                 ]
             );
             Cache::forget("app_config.{$key}");
+
+            $changes[$key] = [
+                'old_value' => $oldValue,
+                'new_value' => $value,
+            ];
+        }
+
+        foreach ($changes as $key => $change) {
+            $this->auditLog->log('config.update', 'AppConfig', $key, $change, $request->user(), $request);
         }
 
         return response()->json([

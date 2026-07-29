@@ -24,9 +24,10 @@
         @php
             $currentStep = $step ?? 1;
             $steps = [
-                1 => 'Base de datos',
+                1 => 'DB',
                 2 => 'Administrador',
-                3 => 'Confirmar',
+                3 => 'Medios',
+                4 => 'Confirmar',
             ];
         @endphp
 
@@ -45,11 +46,11 @@
                                 {{ $num }}
                             @endif
                         </div>
-                        <span class="text-xs mt-2 {{ $num <= $currentStep ? 'text-gray-900 font-medium' : 'text-gray-400' }}">
+                        <span class="text-xs mt-2 whitespace-nowrap {{ $num <= $currentStep ? 'text-gray-900 font-medium' : 'text-gray-400' }}">
                             {{ $label }}
                         </span>
                     </div>
-                    @if ($num < 3)
+                    @if ($num < 4)
                         <div class="flex-1 h-0.5 mx-2 {{ $num < $currentStep ? 'bg-green-500' : 'bg-gray-200' }}"></div>
                     @endif
                 @endforeach
@@ -198,8 +199,74 @@
             </div>
         @endif
 
-        {{-- STEP 3: Confirm & Install --}}
+        {{-- STEP 3: Media Server --}}
         @if ($currentStep === 3)
+            <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-8">
+                <h2 class="text-2xl font-bold text-gray-900 text-center mb-2">Servidor de Medios</h2>
+                <p class="text-gray-600 text-center mb-8">Configurá el almacenamiento de archivos (MinIO o S3 compatible)</p>
+
+                <form method="POST" action="{{ route('install.save-media') }}" class="space-y-5">
+                    @csrf
+
+                    <div>
+                        <label for="media_url" class="block text-sm font-medium text-gray-700 mb-1">URL del servidor</label>
+                        <input type="url" name="media_url" id="media_url" required
+                               value="{{ old('media_url', session('install_media.media_url', 'http://altobul-media:9000')) }}"
+                               class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition"
+                               placeholder="http://altobul-media:9000">
+                        <p class="text-xs text-gray-400 mt-1">Ej: http://altobul-media:9000 (Docker) o http://localhost:9000 (local)</p>
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <label for="media_access_key" class="block text-sm font-medium text-gray-700 mb-1">Access Key</label>
+                            <input type="text" name="media_access_key" id="media_access_key" required
+                                   value="{{ old('media_access_key', session('install_media.media_access_key', 'altobul')) }}"
+                                   class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition"
+                                   placeholder="altobul">
+                        </div>
+                        <div>
+                            <label for="media_secret_key" class="block text-sm font-medium text-gray-700 mb-1">Secret Key</label>
+                            <input type="text" name="media_secret_key" id="media_secret_key" required
+                                   value="{{ old('media_secret_key', session('install_media.media_secret_key', 'altobul_secret')) }}"
+                                   class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition"
+                                   placeholder="••••••••">
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <label for="media_bucket" class="block text-sm font-medium text-gray-700 mb-1">Bucket</label>
+                            <input type="text" name="media_bucket" id="media_bucket"
+                                   value="{{ old('media_bucket', session('install_media.media_bucket', 'altobul')) }}"
+                                   class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition"
+                                   placeholder="altobul">
+                        </div>
+                        <div>
+                            <label for="media_region" class="block text-sm font-medium text-gray-700 mb-1">Región</label>
+                            <input type="text" name="media_region" id="media_region"
+                                   value="{{ old('media_region', session('install_media.media_region', 'us-east-1')) }}"
+                                   class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition"
+                                   placeholder="us-east-1">
+                        </div>
+                    </div>
+
+                    <div class="flex gap-3 pt-2">
+                        <a href="{{ route('install.show', ['step' => 2]) }}"
+                           class="flex-1 bg-gray-100 text-gray-700 py-3 px-4 rounded-lg font-medium hover:bg-gray-200 transition text-center">
+                            Atrás
+                        </a>
+                        <button type="submit"
+                                class="flex-1 bg-blue-600 text-white py-3 px-4 rounded-lg font-medium hover:bg-blue-700 transition">
+                            Siguiente
+                        </button>
+                    </div>
+                </form>
+            </div>
+        @endif
+
+        {{-- STEP 4: Confirm & Install --}}
+        @if ($currentStep === 4)
             <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-8">
                 <h2 class="text-2xl font-bold text-gray-900 text-center mb-2">Confirmar instalación</h2>
                 <p class="text-gray-600 text-center mb-8">Revisá todo antes de instalar</p>
@@ -224,13 +291,27 @@
                             <dd class="text-gray-900">{{ session('install_admin.email', '—') }}</dd>
                         </dl>
                     </div>
+
+                    <div class="p-4 bg-gray-50 rounded-lg">
+                        <h3 class="font-medium text-gray-900 mb-2">Servidor de medios</h3>
+                        <dl class="grid grid-cols-2 gap-1 text-sm">
+                            <dt class="text-gray-500">URL</dt>
+                            <dd class="font-mono text-gray-900">{{ session('install_media.media_url', env('MEDIA_URL', '—')) }}</dd>
+                            <dt class="text-gray-500">Bucket</dt>
+                            <dd class="font-mono text-gray-900">{{ session('install_media.media_bucket', env('MEDIA_BUCKET', 'altobul')) }}</dd>
+                            <dt class="text-gray-500">Access Key</dt>
+                            <dd class="font-mono text-gray-900">{{ session('install_media.media_access_key', env('MEDIA_ACCESS_KEY', '—')) }}</dd>
+                            <dt class="text-gray-500">Región</dt>
+                            <dd class="font-mono text-gray-900">{{ session('install_media.media_region', env('MEDIA_REGION', 'us-east-1')) }}</dd>
+                        </dl>
+                    </div>
                 </div>
 
                 <form method="POST" action="{{ route('install.execute') }}" id="installForm">
                     @csrf
 
                     <div class="flex gap-3">
-                        <a href="{{ route('install.show', ['step' => 2]) }}"
+                        <a href="{{ route('install.show', ['step' => 3]) }}"
                            class="flex-1 bg-gray-100 text-gray-700 py-3 px-4 rounded-lg font-medium hover:bg-gray-200 transition text-center">
                             Atrás
                         </a>

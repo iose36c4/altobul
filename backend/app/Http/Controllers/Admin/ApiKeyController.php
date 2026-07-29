@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Resources\Admin\ApiKeyResource;
 use App\Models\ApiKey;
 use App\Models\User;
+use App\Services\Admin\AuditLogService;
 use App\Services\ApiKeyService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -15,6 +16,7 @@ class ApiKeyController extends Controller
 {
     public function __construct(
         private ApiKeyService $apiKeyService,
+        protected AuditLogService $auditLog
     ) {}
 
     public function index(Request $request): JsonResponse
@@ -60,6 +62,11 @@ class ApiKeyController extends Controller
             $request->input('expires_in_days')
         );
 
+        $this->auditLog->log('api_key.create', 'ApiKey', $result['api_key']->id, [
+            'key_id' => $result['api_key']->id,
+            'type' => $result['api_key']->type,
+        ], $request->user(), $request);
+
         return response()->json([
             'api_key' => new ApiKeyResource($result['api_key']),
             'raw_key' => $result['raw_key'],
@@ -82,7 +89,15 @@ class ApiKeyController extends Controller
     {
         $this->authorizeAdmin(request()->user());
 
+        $keyId = $apiKey->id;
+        $keyType = $apiKey->type;
+
         $this->apiKeyService->revokeApiKey($apiKey);
+
+        $this->auditLog->log('api_key.revoke', 'ApiKey', $keyId, [
+            'key_id' => $keyId,
+            'type' => $keyType,
+        ], request()->user(), request());
 
         return response()->json([
             'message' => 'API key revoked successfully',

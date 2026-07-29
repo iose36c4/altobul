@@ -5,11 +5,16 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Http\Resources\UserResource;
 use App\Models\User;
+use App\Services\Admin\AuditLogService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
 class UserController extends Controller
 {
+    public function __construct(
+        protected AuditLogService $auditLog
+    ) {}
+
     public function index(Request $request): JsonResponse
     {
         $this->authorizeAdmin($request->user());
@@ -71,6 +76,8 @@ class UserController extends Controller
 
         $user->update(['status' => 'suspended']);
 
+        $this->auditLog->log('user.suspend', 'User', $user->id, [], request()->user());
+
         return response()->json([
             'message' => 'User suspended successfully',
             'user' => new UserResource($user->fresh()),
@@ -88,6 +95,8 @@ class UserController extends Controller
         }
 
         $user->update(['status' => 'active']);
+
+        $this->auditLog->log('user.activate', 'User', $user->id, [], request()->user());
 
         return response()->json([
             'message' => 'User activated successfully',
@@ -116,7 +125,13 @@ class UserController extends Controller
             ], 422);
         }
 
+        $oldRole = $user->role;
         $user->update(['role' => $request->input('role')]);
+
+        $this->auditLog->log('user.role_change', 'User', $user->id, [
+            'old_role' => $oldRole,
+            'new_role' => $request->input('role'),
+        ], $request->user());
 
         return response()->json([
             'message' => 'User role updated successfully',

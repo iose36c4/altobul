@@ -5,12 +5,19 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\GeoPolygon;
 use App\Models\GeoZone;
+use App\Rules\GeoJsonPolygon;
+use App\Services\Admin\AuditLogService;
+use Illuminate\Database\QueryException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
 class GeoZoneController extends Controller
 {
+    public function __construct(
+        protected AuditLogService $auditLog
+    ) {}
+
     public function index(Request $request): JsonResponse
     {
         $zones = GeoZone::with('polygons')
@@ -49,28 +56,40 @@ class GeoZoneController extends Controller
             'is_active' => ['boolean'],
             'polygons' => ['required', 'array', 'min:1'],
             'polygons.*.name' => ['required', 'string', 'max:100'],
-            'polygons.*.geometry' => ['required', 'array'],
+            'polygons.*.geometry' => ['required', new GeoJsonPolygon],
             'polygons.*.sort_order' => ['nullable', 'integer', 'min:0'],
         ]);
 
         $polygons = $data['polygons'];
         unset($data['polygons']);
 
-        $zone = DB::transaction(function () use ($data, $polygons) {
-            $data['created_by'] = request()->user()->id;
-            $zone = GeoZone::create($data);
+        try {
+            $zone = DB::transaction(function () use ($data, $polygons) {
+                $data['created_by'] = request()->user()->id;
+                $zone = GeoZone::create($data);
 
-            foreach ($polygons as $index => $polygon) {
-                GeoPolygon::create([
-                    'zone_id' => $zone->id,
-                    'name' => $polygon['name'],
-                    'geometry' => $polygon['geometry'],
-                    'sort_order' => $polygon['sort_order'] ?? $index,
-                ]);
+                foreach ($polygons as $index => $polygon) {
+                    GeoPolygon::create([
+                        'zone_id' => $zone->id,
+                        'name' => $polygon['name'],
+                        'geometry' => $polygon['geometry'],
+                        'sort_order' => $polygon['sort_order'] ?? $index,
+                    ]);
+                }
+
+                return $zone->load('polygons');
+            });
+        } catch (QueryException $e) {
+            if ($e->getCode() === '23514' || str_contains($e->getMessage(), 'ST_IsValid')) {
+                return response()->json(['message' => 'Geometría inválida: el polígono no es válido según PostGIS (ej. auto-intersección, anillos incorrectos)'], 422);
             }
+            throw $e;
+        }
 
-            return $zone->load('polygons');
-        });
+        $this->auditLog->log('geo_zone.create', 'GeoZone', $zone->id, [
+            'zone_id' => $zone->id,
+            'polygons_count' => $zone->polygons->count(),
+        ], request()->user(), request());
 
         return response()->json([
             'zone' => [
@@ -122,6 +141,10 @@ class GeoZoneController extends Controller
 
         $zone->update($data);
 
+        $this->auditLog->log('geo_zone.update', 'GeoZone', $zone->id, [
+            'changes' => $data,
+        ], request()->user(), request());
+
         $zone->load('polygons');
 
         return response()->json([
@@ -145,7 +168,10 @@ class GeoZoneController extends Controller
 
     public function destroy(GeoZone $zone): JsonResponse
     {
+        $zoneId = $zone->id;
         $zone->delete();
+
+        $this->auditLog->log('geo_zone.delete', 'GeoZone', $zoneId, [], request()->user(), request());
 
         return response()->json(['message' => 'Zone deleted']);
     }
@@ -154,7 +180,7 @@ class GeoZoneController extends Controller
     {
         $data = $request->validate([
             'name' => ['required', 'string', 'max:100'],
-            'geometry' => ['required', 'array'],
+            'geometry' => ['required', new GeoJsonPolygon],
             'sort_order' => ['nullable', 'integer', 'min:0'],
         ]);
 
@@ -162,7 +188,20 @@ class GeoZoneController extends Controller
         $data['zone_id'] = $zone->id;
         $data['sort_order'] = $data['sort_order'] ?? $maxSort + 1;
 
-        $polygon = GeoPolygon::create($data);
+        try {
+            $polygon = GeoPolygon::create($data);
+        } catch (QueryException $e) {
+            if ($e->getCode() === '23514' || str_contains($e->getMessage(), 'ST_IsValid')) {
+                return response()->json(['message' => 'Geometría inválida: el polígono no es válido según PostGIS (ej. auto-intersección, anillos incorrectos)'], 422);
+            }
+            throw $e;
+        }
+
+        $this->auditLog->log('geo_zone.update', 'GeoZone', $zone->id, [
+            'action' => 'polygon_added',
+            'polygon_id' => $polygon->id,
+            'polygon_name' => $polygon->name,
+        ], request()->user(), request());
 
         return response()->json([
             'polygon' => [
@@ -182,11 +221,24 @@ class GeoZoneController extends Controller
 
         $data = $request->validate([
             'name' => ['sometimes', 'string', 'max:100'],
-            'geometry' => ['sometimes', 'array'],
+            'geometry' => ['sometimes', new GeoJsonPolygon],
             'sort_order' => ['sometimes', 'integer', 'min:0'],
         ]);
 
-        $polygon->update($data);
+        try {
+            $polygon->update($data);
+        } catch (QueryException $e) {
+            if ($e->getCode() === '23514' || str_contains($e->getMessage(), 'ST_IsValid')) {
+                return response()->json(['message' => 'Geometría inválida: el polígono no es válido según PostGIS'], 422);
+            }
+            throw $e;
+        }
+
+        $this->auditLog->log('geo_zone.update', 'GeoZone', $zone->id, [
+            'action' => 'polygon_updated',
+            'polygon_id' => $polygon->id,
+            'changes' => $data,
+        ], request()->user(), request());
 
         return response()->json([
             'polygon' => [
@@ -204,7 +256,13 @@ class GeoZoneController extends Controller
             return response()->json(['message' => 'Polygon not found in zone'], 404);
         }
 
+        $polygonId = $polygon->id;
         $polygon->delete();
+
+        $this->auditLog->log('geo_zone.update', 'GeoZone', $zone->id, [
+            'action' => 'polygon_deleted',
+            'polygon_id' => $polygonId,
+        ], request()->user(), request());
 
         return response()->json(['message' => 'Polygon deleted']);
     }

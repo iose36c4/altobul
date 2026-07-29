@@ -1,8 +1,7 @@
 <?php
 
-use App\Http\Controllers\Admin\ApiKeyController;
 use App\Http\Controllers\Admin\AuditLogController;
-use App\Http\Controllers\Admin\ConfigController;
+use App\Http\Controllers\Admin\DashboardController;
 use App\Http\Controllers\Admin\GeoZoneController;
 use App\Http\Controllers\Admin\ProfileFieldDefinitionController;
 use App\Http\Controllers\Admin\VerificationController;
@@ -202,10 +201,16 @@ Route::prefix('admin')
             Route::get('verification/status', [AuthController::class, 'getVerificationStatus']);
         });
 
+        // Admin API Key verification - only requires API Key
+        Route::get('verify', function () {
+            return response()->json(['success' => true, 'message' => 'API key is valid']);
+        });
+
         // Admin Configuration - requires admin authorization
         Route::middleware(['auth:sanctum', 'admin'])->group(function () {
-            Route::get('config', [ConfigController::class, 'show']);
-            Route::put('config', [ConfigController::class, 'update']);
+            // Dashboard
+            Route::get('dashboard/metrics', [DashboardController::class, 'metrics']);
+            Route::get('dashboard/charts', [DashboardController::class, 'charts']);
 
             // API Key Management
             Route::get('api-keys', [ApiKeyController::class, 'index']);

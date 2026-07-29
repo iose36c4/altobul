@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\VerificationRequest;
+use App\Services\Admin\AuditLogService;
 use App\Services\Auth\AuthService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -12,6 +13,7 @@ class VerificationController extends Controller
 {
     public function __construct(
         private AuthService $authService,
+        private AuditLogService $auditLog
     ) {}
 
     public function index(Request $request): JsonResponse
@@ -84,6 +86,11 @@ class VerificationController extends Controller
     {
         $reviewed = $this->authService->reviewVerification($verificationRequest, 'approve');
 
+        $this->auditLog->log('verification.approve', 'VerificationRequest', $verificationRequest->id, [
+            'request_id' => $verificationRequest->id,
+            'user_id' => $verificationRequest->user_id,
+        ], request()->user(), request());
+
         return response()->json([
             'request' => [
                 'id' => $reviewed->id,
@@ -105,6 +112,12 @@ class VerificationController extends Controller
             'reject',
             $validated['rejection_reason']
         );
+
+        $this->auditLog->log('verification.reject', 'VerificationRequest', $verificationRequest->id, [
+            'request_id' => $verificationRequest->id,
+            'user_id' => $verificationRequest->user_id,
+            'reason' => $validated['rejection_reason'],
+        ], request()->user(), request());
 
         return response()->json([
             'request' => [

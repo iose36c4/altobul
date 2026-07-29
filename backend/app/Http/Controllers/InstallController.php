@@ -161,6 +161,46 @@ class InstallController extends Controller
         return redirect()->route('install.show', ['step' => 3]);
     }
 
+    public function saveMedia(Request $request): JsonResponse|RedirectResponse
+    {
+        $validator = Validator::make($request->all(), [
+            'media_url' => ['required', 'string', 'url', 'max:255'],
+            'media_bucket' => ['nullable', 'string', 'max:255'],
+            'media_region' => ['nullable', 'string', 'max:255'],
+            'media_access_key' => ['required', 'string', 'max:255'],
+            'media_secret_key' => ['required', 'string', 'max:255'],
+        ]);
+
+        if ($validator->fails()) {
+            if ($request->expectsJson()) {
+                return response()->json([
+                    'success' => false,
+                    'errors' => $validator->errors(),
+                ], 422);
+            }
+
+            return back()->withErrors($validator)->withInput();
+        }
+
+        $mediaData = [
+            'media_url' => rtrim($request->input('media_url'), '/'),
+            'media_bucket' => $request->input('media_bucket', 'altobul'),
+            'media_region' => $request->input('media_region', 'us-east-1'),
+            'media_access_key' => $request->input('media_access_key'),
+            'media_secret_key' => $request->input('media_secret_key'),
+        ];
+
+        session(['install_media' => $mediaData]);
+
+        $this->writeMediaToEnv($mediaData);
+
+        if ($request->expectsJson()) {
+            return response()->json(['success' => true, 'message' => 'Configuración de medios guardada']);
+        }
+
+        return redirect()->route('install.show', ['step' => 4]);
+    }
+
     public function execute(Request $request): JsonResponse|RedirectResponse
     {
         $adminData = session('install_admin');
@@ -222,7 +262,7 @@ class InstallController extends Controller
 
             DB::commit();
 
-            session()->forget('install_admin');
+            session()->forget(['install_admin', 'install_media']);
 
             $data = [
                 'admin' => [
@@ -443,6 +483,37 @@ class InstallController extends Controller
 
         config()->set('database.connections.pgsql', $dbConfig);
         DB::purge('pgsql');
+    }
+
+    private function writeMediaToEnv(array $data): void
+    {
+        $envPath = base_path('.env');
+
+        if (! file_exists($envPath)) {
+            return;
+        }
+
+        $envContent = file_get_contents($envPath);
+
+        $replacements = [
+            'FILESYSTEM_DISK' => 'media',
+            'MEDIA_URL' => $data['media_url'],
+            'MEDIA_ACCESS_KEY' => $data['media_access_key'],
+            'MEDIA_SECRET_KEY' => $data['media_secret_key'],
+            'MEDIA_BUCKET' => $data['media_bucket'],
+            'MEDIA_REGION' => $data['media_region'],
+        ];
+
+        foreach ($replacements as $key => $value) {
+            $escapedKey = preg_quote($key, '/');
+            if (preg_match("/^{$escapedKey}=.*/m", $envContent)) {
+                $envContent = preg_replace("/^{$escapedKey}=.*/m", "{$key}={$value}", $envContent);
+            } else {
+                $envContent .= "\n{$key}={$value}";
+            }
+        }
+
+        file_put_contents($envPath, $envContent);
     }
 
     private function installerAlreadyDone(Request $request): JsonResponse|RedirectResponse

@@ -12,6 +12,19 @@ class UpdateConfigRequest extends FormRequest
     }
 
     private const ALLOWED_KEYS = [
+        // Spec notation (preferred)
+        'app.name',
+        'app.online_threshold_minutes',
+        'discovery.max_distance_km',
+        'discovery.max_results',
+        'toke.ttl_hours',
+        'match.ttl_days',
+        'post.ttl_hours',
+        'photo.max_per_user',
+        'photo.max_size_mb',
+        'verification.methods',
+        'geo.default_zone_id',
+        // Legacy underscore notation (for backward compatibility)
         'app_name',
         'app_tagline',
         'registration_enabled',
