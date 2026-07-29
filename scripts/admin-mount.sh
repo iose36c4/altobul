@@ -19,13 +19,23 @@ if docker ps -a --format '{{.Names}}' | grep -q "^altobul-admin$"; then
 fi
 
 echo "==> Preparing .env for Docker..."
-if [ -f "$ENV_FILE" ]; then
-    cp "$ENV_FILE" "$ENV_BACKUP"
-    echo "    Backed up .env to .env.backup"
+if [ ! -f "$ENV_FILE" ]; then
+    cp "$ADMIN_DIR/.env.example" "$ENV_FILE"
+    echo "    Created .env from .env.example"
 fi
+
+cp "$ENV_FILE" "$ENV_BACKUP"
+echo "    Backed up .env to .env.backup"
 
 sed \
     -e 's|^ADMIN_API_BASE_URL=.*|ADMIN_API_BASE_URL=http://altobul-backend:8000|' \
+    -e 's|^DB_CONNECTION=.*|DB_CONNECTION=sqlite|' \
+    -e 's|^DB_DATABASE=.*|DB_DATABASE=database/database.sqlite|' \
+    -e '/^DB_HOST=/d' \
+    -e '/^DB_PORT=/d' \
+    -e '/^DB_USERNAME=/d' \
+    -e '/^DB_PASSWORD=/d' \
+    -e 's|^APP_URL=.*|APP_URL=http://localhost:8001|' \
     "$ENV_BACKUP" > "$ENV_FILE"
 
 echo "==> Creating admin container..."

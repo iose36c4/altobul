@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Admin\ApiKeyController;
+use App\Http\Controllers\Admin\AuditLogController;
 use App\Http\Controllers\Admin\ConfigController;
 use App\Http\Controllers\Admin\DashboardController;
 use App\Http\Controllers\Admin\GeoZoneController;

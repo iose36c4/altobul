@@ -28,6 +28,8 @@ fi
 
 sed \
   -e 's/^DB_HOST=.*/DB_HOST=altobul-postgres/' \
+  -e 's/^DB_PORT=.*/DB_PORT=5432/' \
+  -e 's/^DB_PASSWORD=.*/DB_PASSWORD=altobul_secret/' \
   -e 's/^REDIS_HOST=.*/REDIS_HOST=/' \
   -e 's/^QUEUE_CONNECTION=.*/QUEUE_CONNECTION=sync/' \
   -e 's/^CACHE_STORE=.*/CACHE_STORE=file/' \
