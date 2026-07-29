@@ -25,10 +25,6 @@ class User extends Authenticatable
         'api_token' => 'encrypted',
     ];
 
-    protected $casts = [
-        'api_token' => 'encrypted',
-    ];
-
     public function isAdmin(): bool
     {
         return $this->role === 'admin';

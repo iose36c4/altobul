@@ -15,7 +15,7 @@ return new class extends Migration
             $table->string('password_hash')->nullable();
             $table->string('role')->default('admin');
             $table->string('status')->default('active');
-            $table->string('api_token')->nullable();
+            $table->text('api_token')->nullable();
             $table->rememberToken();
             $table->timestamps();
         });

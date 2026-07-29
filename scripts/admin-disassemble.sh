@@ -30,10 +30,8 @@ fi
 echo "==> Removing .env.backup..."
 rm -f "$ADMIN_DIR/.env.backup"
 
-echo "==> Cleaning storage/framework cache..."
-docker run --rm -v "$ADMIN_DIR:/var/www/html" -w /var/www/html php:8.3-cli \
-    sh -c "rm -rf storage/framework/cache/* storage/framework/sessions/* storage/framework/views/* bootstrap/cache/* 2>/dev/null || true"
+echo "==> Removing Docker volume (altobul_admin_data)..."
+docker volume rm altobul_admin_data 2>/dev/null || echo "    Volume not found or already removed"
 
-echo ""
-echo "All cleaned up - ready for fresh install."
+echo "==> All cleaned up - ready for fresh install."
 echo "Run './scripts/admin-mount.sh' to rebuild and configure."

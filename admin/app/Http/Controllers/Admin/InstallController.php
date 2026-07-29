@@ -22,6 +22,16 @@ class InstallController
         ]);
     }
 
+    public function redirectToInstall(Request $request): RedirectResponse
+    {
+        if (env('ADMIN_API_KEY')) {
+            return redirect()->route('admin.login');
+        }
+
+        // Build install URL using current request's host/port
+        return redirect($request->getSchemeAndHttpHost() . '/install');
+    }
+
     public function testConnection(Request $request): JsonResponse
     {
         $validator = Validator::make($request->all(), [

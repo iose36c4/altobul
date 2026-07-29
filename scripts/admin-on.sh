@@ -1,5 +1,5 @@
 #!/bin/bash
-set -uo pipefail
+set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 PROJECT_DIR="$(dirname "$SCRIPT_DIR")"
@@ -10,6 +10,12 @@ docker start altobul-admin 2>/dev/null || {
     echo "    Container not found. Run './scripts/admin-mount.sh' first."
     exit 1
 }
+
+echo "==> Connecting to backend_default network (if not already)..."
+docker network connect backend_default altobul-admin 2>/dev/null || true
+
+echo "==> Connecting to altobul-net network (for backend API access)..."
+docker network connect altobul-net altobul-admin 2>/dev/null || true
 
 echo "==> Waiting for container to be ready..."
 sleep 3
@@ -28,16 +34,27 @@ docker exec altobul-admin sh -c "
     cd /var/www/html &&
     sed -i \
         -e 's|^DB_CONNECTION=.*|DB_CONNECTION=pgsql|' \
-        -e 's|^DB_HOST=.*|DB_HOST=backend-postgres-1|' \
-        -e 's|^DB_PORT=.*|DB_PORT=5432|' \
         -e 's|^DB_DATABASE=.*|DB_DATABASE=altobul_admin|' \
-        -e 's|^DB_USERNAME=.*|DB_USERNAME=altobul|' \
-        -e 's|^DB_PASSWORD=.*|DB_PASSWORD=altobul_secret|' \
         .env
+    # Add PostgreSQL credentials (these may not exist in .env.example)
+    for var in 'DB_HOST=backend-postgres-1' 'DB_PORT=5432' 'DB_USERNAME=altobul' 'DB_PASSWORD=altobul'; do
+        key=\"\${var%%=*}\"
+        if ! grep -q \"^\${key}=\" .env; then
+            echo \"\$var\" >> .env
+        fi
+    done
 "
 
 echo "==> Generating APP_KEY if needed..."
 docker exec altobul-admin php artisan key:generate --force
+
+echo "==> Fixing storage permissions..."
+docker exec altobul-admin sh -c "
+    mkdir -p /var/www/html/storage/framework/sessions &&
+    mkdir -p /var/www/html/storage/framework/views &&
+    mkdir -p /var/www/html/storage/framework/cache/data &&
+    chown -R www-data:www-data /var/www/html/storage /var/www/html/bootstrap/cache
+"
 
 echo "==> Running migrations..."
 docker exec altobul-admin php artisan migrate --force

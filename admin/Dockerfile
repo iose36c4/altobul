@@ -1,4 +1,4 @@
-FROM php:8.3-fpm
+FROM php:8.4-fpm
 
 RUN apt-get update && apt-get install -y \
     libzip-dev \
@@ -39,8 +39,11 @@ COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
 
 WORKDIR /var/www/html
 
+RUN mkdir -p /var/run/php && chown www-data:www-data /var/run/php
+
 COPY docker/nginx.conf /etc/nginx/sites-available/default
 COPY docker/supervisord.conf /etc/supervisor/conf.d/supervisord.conf
+COPY docker/php-fpm.conf /usr/local/etc/php-fpm.d/www.conf
 
 EXPOSE 8000
 

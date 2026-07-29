@@ -14,19 +14,13 @@ use App\Http\Middleware\AdminWebGuardMiddleware;
 use Illuminate\Support\Facades\Route;
 
 // Installer — only available when ADMIN_API_KEY is not set
-Route::prefix('install')->name('install.')->group(function () {
+Route::prefix('install')->name('install.')->withoutMiddleware([\Illuminate\Foundation\Http\Middleware\VerifyCsrfToken::class])->group(function () {
     Route::get('/', [InstallController::class, 'show'])->name('show');
     Route::post('/test', [InstallController::class, 'testConnection'])->name('test');
     Route::post('/save', [InstallController::class, 'save'])->name('save');
 });
 
-Route::get('/', function () {
-    if (! env('ADMIN_API_KEY')) {
-        return redirect()->route('install.show');
-    }
-
-    return redirect()->route('admin.dashboard');
-});
+Route::get('/', [InstallController::class, 'redirectToInstall']);
 
 // Auth Web
 Route::prefix('admin')->name('admin.')->group(function () {
