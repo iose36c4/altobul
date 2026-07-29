@@ -16,11 +16,15 @@ start_container() {
 start_container altobul-admin
 
 echo ""
+echo "==> Waiting for container to be ready..."
+sleep 3
+
+echo ""
 echo "==> Installing Composer dependencies..."
 docker exec altobul-admin composer install --no-interaction --prefer-dist --optimize-autoloader 2>/dev/null || true
 
 echo ""
-echo "==> Running Laravel setup..."
+echo "==> Generating APP_KEY if missing..."
 docker exec altobul-admin php artisan key:generate --force 2>/dev/null || true
 
 echo ""
@@ -43,4 +47,5 @@ EOF
 
 echo ""
 echo "Ready! http://localhost:8001"
+echo "If ADMIN_API_KEY is not set, visit http://localhost:8001/install to configure."
 echo "Details: $OUTPUT_FILE"

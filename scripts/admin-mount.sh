@@ -18,16 +18,15 @@ if docker ps -a --format '{{.Names}}' | grep -q "^altobul-admin$"; then
     docker rm -f altobul-admin >/dev/null
 fi
 
-echo "==> Preparing .env for Docker..."
-if [ ! -f "$ENV_FILE" ]; then
+echo "==> Preparing .env for fresh install..."
+# Always start from .env.example for clean install
+if [ ! -f "$ENV_FILE" ] || [ ! -s "$ENV_FILE" ]; then
     cp "$ADMIN_DIR/.env.example" "$ENV_FILE"
     echo "    Created .env from .env.example"
 fi
 
-cp "$ENV_FILE" "$ENV_BACKUP"
-echo "    Backed up .env to .env.backup"
-
-sed \
+# Set Docker-specific defaults (installer will override ADMIN_API_BASE_URL and ADMIN_API_KEY)
+sed -i \
     -e 's|^ADMIN_API_BASE_URL=.*|ADMIN_API_BASE_URL=http://altobul-backend:8000|' \
     -e 's|^DB_CONNECTION=.*|DB_CONNECTION=sqlite|' \
     -e 's|^DB_DATABASE=.*|DB_DATABASE=database/database.sqlite|' \
@@ -36,7 +35,7 @@ sed \
     -e '/^DB_USERNAME=/d' \
     -e '/^DB_PASSWORD=/d' \
     -e 's|^APP_URL=.*|APP_URL=http://localhost:8001|' \
-    "$ENV_BACKUP" > "$ENV_FILE"
+    "$ENV_FILE"
 
 echo "==> Creating admin container..."
 docker create \
@@ -53,4 +52,5 @@ echo ""
 echo "Container created!"
 echo "  - altobul-admin -> http://localhost:8001"
 echo ""
-echo "Run './scripts/admin-on.sh' to start."
+echo "Run './scripts/admin-on.sh' to start and run migrations."
+echo "Then visit http://localhost:8001 to run the installer (will prompt for backend URL and API key)."
