@@ -9,5 +9,6 @@ else
 fi
 
 echo ""
-echo "All containers stopped."
+echo "Container stopped. Data preserved."
 echo "Run './scripts/admin-on.sh' to start again."
+echo "Run './scripts/admin-disassemble.sh' for full cleanup (removes container, DB, cache, .env)."

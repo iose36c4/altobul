@@ -1,51 +1,50 @@
 #!/bin/bash
-set -uo pipefail
+set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+PROJECT_DIR="$(dirname "$SCRIPT_DIR")"
+ADMIN_DIR="$PROJECT_DIR/admin"
 
-start_container() {
-    local name="$1"
-    if docker inspect "$name" >/dev/null 2>&1; then
-        echo "==> Starting $name..."
-        docker start "$name" || echo "    [ERROR] Failed to start $name"
-    else
-        echo "    [SKIP] Container '$name' does not exist. Run './scripts/admin-mount.sh' first."
-    fi
+echo "==> Starting altobul-admin container..."
+docker start altobul-admin 2>/dev/null || {
+    echo "    Container not found. Run './scripts/admin-mount.sh' first."
+    exit 1
 }
 
-start_container altobul-admin
-
-echo ""
 echo "==> Waiting for container to be ready..."
 sleep 3
 
-echo ""
-echo "==> Installing Composer dependencies..."
-docker exec altobul-admin composer install --no-interaction --prefer-dist --optimize-autoloader 2>/dev/null || true
+echo "==> Checking Laravel config..."
+docker exec altobul-admin sh -c "
+    cd /var/www/html &&
+    if [ ! -f .env ] || [ ! -s .env ]; then
+        echo 'No .env found, copying from .env.example'
+        cp .env.example .env
+    fi
+"
+
+echo "==> Generating APP_KEY if needed..."
+docker exec altobul-admin php artisan key:generate --force
+
+echo "==> Running migrations..."
+docker exec altobul-admin php artisan migrate --force
+
+echo "==> Installing deps & building assets..."
+docker exec altobul-admin sh -c "
+    cd /var/www/html &&
+    composer install --no-dev --optimize-autoloader &&
+    npm ci && npm run build
+" 2>&1 | tail -20
 
 echo ""
-echo "==> Generating APP_KEY if missing..."
-docker exec altobul-admin php artisan key:generate --force 2>/dev/null || true
-
+echo "============================================"
+echo "altobul-admin started!"
+echo "URL: http://localhost:8001"
 echo ""
-echo "==> Running database migrations..."
-docker exec altobul-admin php artisan migrate --force 2>/dev/null || true
-
-echo ""
-echo "==> Building frontend assets..."
-docker exec altobul-admin npm install --silent 2>/dev/null || true
-docker exec altobul-admin npm run build 2>&1 | tail -5
-
-OUTPUT_FILE="$SCRIPT_DIR/admin-on.md"
-
-cat > "$OUTPUT_FILE" <<-EOF
-# Admin Server
-
-- URL: http://localhost:8001
-- Backend API: http://altobul-backend:8000
-EOF
-
-echo ""
-echo "Ready! http://localhost:8001"
-echo "If ADMIN_API_KEY is not set, visit http://localhost:8001/install to configure."
-echo "Details: $OUTPUT_FILE"
+if ! grep -q "^ADMIN_API_KEY=" "$ADMIN_DIR/.env" || [ -z "$(grep '^ADMIN_API_KEY=' "$ADMIN_DIR/.env" | cut -d'=' -f2)" ]; then
+    echo "⚠️  ADMIN_API_KEY is empty - first run will show installer at /install"
+    echo "   Enter your backend URL and ADMIN API Key there."
+else
+    echo "✓ ADMIN_API_KEY configured - goes directly to /admin/login"
+fi
+echo "============================================"
