@@ -1,5 +1,5 @@
 #!/bin/bash
-set -euo pipefail
+set -uo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 PROJECT_DIR="$(dirname "$SCRIPT_DIR")"
@@ -23,6 +23,19 @@ docker exec altobul-admin sh -c "
     fi
 "
 
+# Update .env with correct PostgreSQL settings (inside container, connects to backend-postgres-1)
+docker exec altobul-admin sh -c "
+    cd /var/www/html &&
+    sed -i \
+        -e 's|^DB_CONNECTION=.*|DB_CONNECTION=pgsql|' \
+        -e 's|^DB_HOST=.*|DB_HOST=backend-postgres-1|' \
+        -e 's|^DB_PORT=.*|DB_PORT=5432|' \
+        -e 's|^DB_DATABASE=.*|DB_DATABASE=altobul_admin|' \
+        -e 's|^DB_USERNAME=.*|DB_USERNAME=altobul|' \
+        -e 's|^DB_PASSWORD=.*|DB_PASSWORD=altobul_secret|' \
+        .env
+"
+
 echo "==> Generating APP_KEY if needed..."
 docker exec altobul-admin php artisan key:generate --force
 
@@ -42,9 +55,9 @@ echo "altobul-admin started!"
 echo "URL: http://localhost:8001"
 echo ""
 if ! grep -q "^ADMIN_API_KEY=" "$ADMIN_DIR/.env" || [ -z "$(grep '^ADMIN_API_KEY=' "$ADMIN_DIR/.env" | cut -d'=' -f2)" ]; then
-    echo "⚠️  ADMIN_API_KEY is empty - first run will show installer at /install"
-    echo "   Enter your backend URL and ADMIN API Key there."
+    echo "ADMIN_API_KEY is empty - first run will show installer at /install"
+    echo "Enter your backend URL and ADMIN API Key there."
 else
-    echo "✓ ADMIN_API_KEY configured - goes directly to /admin/login"
+    echo "ADMIN_API_KEY configured - goes directly to /admin/login"
 fi
 echo "============================================"

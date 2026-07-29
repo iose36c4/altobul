@@ -14,9 +14,6 @@ docker rm -v altobul-admin 2>/dev/null || true
 echo "==> Removing Docker network..."
 docker network rm altobul_admin_net 2>/dev/null || true
 
-echo "==> Removing Docker volume..."
-docker volume rm altobul_admin_data 2>/dev/null || true
-
 echo "==> Dropping PostgreSQL database (altobul_admin)..."
 docker exec backend-postgres-1 psql -U altobul -d altobul -c "DROP DATABASE IF EXISTS altobul_admin;" 2>/dev/null || \
 docker exec altobul-postgres psql -U altobul -d altobul -c "DROP DATABASE IF EXISTS altobul_admin;" 2>/dev/null || \
