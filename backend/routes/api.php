@@ -1,9 +1,13 @@
 <?php
 
+use App\Http\Controllers\Admin\ApiKeyController;
 use App\Http\Controllers\Admin\AuditLogController;
+use App\Http\Controllers\Admin\ConfigController;
+use App\Http\Controllers\Admin\ContentModerationController;
 use App\Http\Controllers\Admin\DashboardController;
 use App\Http\Controllers\Admin\GeoZoneController;
 use App\Http\Controllers\Admin\ProfileFieldDefinitionController;
+use App\Http\Controllers\Admin\UserController as AdminUserController;
 use App\Http\Controllers\Admin\VerificationController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\BlockController;
@@ -20,6 +24,8 @@ use App\Http\Controllers\PhotoController;
 use App\Http\Controllers\PostController;
 use App\Http\Controllers\Profile\ProfileFieldValueAccessController;
 use App\Http\Controllers\ProfileController;
+use App\Http\Controllers\ReportController;
+use App\Http\Controllers\SystemController;
 use App\Http\Controllers\TokeController;
 use App\Http\Controllers\UserController;
 use App\Http\Middleware\InstallerGuardMiddleware;
@@ -153,6 +159,11 @@ Route::prefix('client')
             Route::get('discover/nearby', [DiscoveryController::class, 'nearby']);
         });
 
+        // Reports
+        Route::middleware(['auth:sanctum', 'verified'])->group(function () {
+            Route::post('reports', [ReportController::class, 'store'])->middleware('throttle:api-sensitive');
+        });
+
         // Posts
         Route::middleware(['auth:sanctum', 'verified'])->group(function () {
             Route::get('posts', [PostController::class, 'index']);
@@ -206,8 +217,9 @@ Route::prefix('admin')
             return response()->json(['success' => true, 'message' => 'API key is valid']);
         });
 
-        // Admin Configuration - requires admin authorization
-        Route::middleware(['auth:sanctum', 'admin'])->group(function () {
+        // Admin Configuration - requires admin API key (admin panel uses API key auth)
+        // The 'api.key:ADMIN' middleware on the group already validates the admin API key
+        Route::group([], function () {
             // Dashboard
             Route::get('dashboard/metrics', [DashboardController::class, 'metrics']);
             Route::get('dashboard/charts', [DashboardController::class, 'charts']);
@@ -231,17 +243,63 @@ Route::prefix('admin')
 
             // Geo Zones
             Route::apiResource('geo-zones', GeoZoneController::class)
+                ->parameters(['geo-zones' => 'zone'])
                 ->only(['index', 'store', 'show', 'update', 'destroy']);
+            Route::post('geo-zones/merge', [GeoZoneController::class, 'merge']);
+            Route::post('geo-zones/subtract', [GeoZoneController::class, 'subtract']);
             Route::post('geo-zones/{zone}/polygons', [GeoZoneController::class, 'addPolygon']);
             Route::put('geo-zones/{zone}/polygons/{polygon}', [GeoZoneController::class, 'updatePolygon']);
             Route::delete('geo-zones/{zone}/polygons/{polygon}', [GeoZoneController::class, 'deletePolygon']);
 
             // User Management
-            Route::get('users', [App\Http\Controllers\Admin\UserController::class, 'index']);
-            Route::get('users/{user}', [App\Http\Controllers\Admin\UserController::class, 'show']);
-            Route::post('users/{user}/suspend', [App\Http\Controllers\Admin\UserController::class, 'suspend']);
-            Route::post('users/{user}/activate', [App\Http\Controllers\Admin\UserController::class, 'activate']);
-            Route::post('users/{user}/change-role', [App\Http\Controllers\Admin\UserController::class, 'changeRole']);
+            Route::get('users', [AdminUserController::class, 'index']);
+            Route::post('users', [AdminUserController::class, 'store']);
+            Route::get('users/{user}', [AdminUserController::class, 'show']);
+            Route::put('users/{user}', [AdminUserController::class, 'update']);
+            Route::post('users/{user}/suspend', [AdminUserController::class, 'suspend']);
+            Route::post('users/{user}/activate', [AdminUserController::class, 'activate']);
+            Route::post('users/{user}/ban', [AdminUserController::class, 'ban']);
+            Route::delete('users/{user}', [AdminUserController::class, 'destroy']);
+            Route::post('users/{user}/change-role', [AdminUserController::class, 'changeRole']);
+
+            // Config Management
+            Route::get('config', [ConfigController::class, 'index']);
+            Route::put('config', [ConfigController::class, 'update']);
+
+            // Reports
+            Route::get('reports', [App\Http\Controllers\Admin\ReportController::class, 'index']);
+            Route::get('reports/{report}', [App\Http\Controllers\Admin\ReportController::class, 'show']);
+            Route::post('reports/{report}/dismiss', [App\Http\Controllers\Admin\ReportController::class, 'dismiss']);
+            Route::post('reports/{report}/action', [App\Http\Controllers\Admin\ReportController::class, 'action']);
+
+            // Content Moderation
+            Route::prefix('moderation')->group(function () {
+                // Posts
+                Route::get('users/{user}/posts', [ContentModerationController::class, 'userPosts']);
+                Route::delete('posts/{post}', [ContentModerationController::class, 'deletePost']);
+
+                // Photos
+                Route::get('users/{user}/photos', [ContentModerationController::class, 'userPhotos']);
+                Route::delete('photos/{photo}', [ContentModerationController::class, 'deletePhoto']);
+
+                // Tokes
+                Route::get('users/{user}/tokes', [ContentModerationController::class, 'userTokes']);
+                Route::delete('tokes/{toke}', [ContentModerationController::class, 'deleteToke']);
+
+                // Matches
+                Route::get('users/{user}/matches', [ContentModerationController::class, 'userMatches']);
+                Route::delete('matches/{match}', [ContentModerationController::class, 'deleteMatch']);
+
+                // Friendships
+                Route::get('users/{user}/friendships', [ContentModerationController::class, 'userFriendships']);
+                Route::delete('friendships/{friendship}', [ContentModerationController::class, 'deleteFriendship']);
+
+                // Conversations
+                Route::get('users/{user}/conversations', [ContentModerationController::class, 'userConversations']);
+                Route::get('conversations/{conversation}/messages', [ContentModerationController::class, 'conversationMessages']);
+                Route::delete('conversations/{conversation}', [ContentModerationController::class, 'deleteConversation']);
+                Route::delete('messages/{message}', [ContentModerationController::class, 'deleteMessage']);
+            });
 
             // Audit Logs
             Route::get('audit-logs', [AuditLogController::class, 'index']);
@@ -254,4 +312,10 @@ Route::prefix('install')->group(function () {
     Route::post('/', [InstallController::class, 'install'])
         ->middleware(['throttle:install', InstallerGuardMiddleware::class]);
     Route::get('status', [InstallController::class, 'status']);
+});
+
+// System Health & Compatibility (no API key required)
+Route::prefix('system')->group(function () {
+    Route::get('health', [SystemController::class, 'health']);
+    Route::get('compatibility', [SystemController::class, 'compatibility']);
 });

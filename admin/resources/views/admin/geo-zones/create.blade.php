@@ -1,4 +1,125 @@
-<x-admin.layouts.app>
+@php
+$scripts = <<<'SCRIPTS'
+<script>
+// Map initialization for create page
+let createMap = null;
+let createDrawnItems = null;
+let createDrawControl = null;
+
+document.addEventListener('DOMContentLoaded', function() {
+    initCreateMap();
+});
+
+function initCreateMap() {
+    createMap = L.map('create-map').setView([-34.6037, -58.3816], 10);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '&copy; OpenStreetMap contributors'
+    }).addTo(createMap);
+    
+    createDrawnItems = new L.FeatureGroup();
+    createMap.addLayer(createDrawnItems);
+    
+    createDrawControl = new L.Control.Draw({
+        edit: { featureGroup: createDrawnItems },
+        draw: {
+            polygon: { 
+                allowIntersection: false, 
+                showArea: true,
+                shapeOptions: {
+                    color: '#3b82f6',
+                    fillColor: '#3b82f6',
+                    fillOpacity: 0.2,
+                    weight: 2
+                }
+            },
+            polyline: false, 
+            circle: false, 
+            rectangle: false, 
+            marker: false, 
+            circlemarker: false
+        }
+    });
+    createMap.addControl(createDrawControl);
+    
+    createMap.on(L.Draw.Event.CREATED, function(e) {
+        const layer = e.layer;
+        // Validate minimum 3 points (4 coordinates since closed)
+        const coords = layer.getLatLngs()[0];
+        if (coords.length < 4) {
+            alert('Un polígono debe tener al menos 3 puntos. Por favor, dibuja nuevamente.');
+            createDrawnItems.removeLayer(layer);
+            return;
+        }
+        createDrawnItems.addLayer(layer);
+        updatePolygonsInput();
+        document.getElementById('submit-btn').disabled = false;
+        document.getElementById('polygon-validation').classList.add('hidden');
+    });
+    
+    createMap.on(L.Draw.Event.EDITED, function(e) {
+        // Validate edited polygons have at least 3 points
+        let valid = true;
+        e.layers.eachLayer(function(layer) {
+            const coords = layer.getLatLngs()[0];
+            if (coords.length < 4) {
+                valid = false;
+            }
+        });
+        if (!valid) {
+            alert('Un polígono debe tener al menos 3 puntos.');
+        }
+        updatePolygonsInput();
+    });
+    
+    createMap.on(L.Draw.Event.DELETED, function(e) {
+        updatePolygonsInput();
+        if (createDrawnItems.getLayers().length === 0) {
+            document.getElementById('submit-btn').disabled = true;
+        }
+    });
+}
+
+function updatePolygonsInput() {
+    const polygons = [];
+    createDrawnItems.eachLayer(function(layer) {
+        const geojson = layer.toGeoJSON();
+        const coords = geojson.geometry.coordinates[0];
+        // Validate minimum 3 points (4 coordinates = closed ring)
+        if (coords.length >= 4) {
+            polygons.push({
+                name: `Polígono ${polygons.length + 1}`,
+                geometry: geojson.geometry,
+                sort_order: polygons.length
+            });
+        }
+    });
+    document.getElementById('polygons-input').value = JSON.stringify(polygons);
+    document.getElementById('polygon-count').textContent = polygons.length;
+    
+    // Show/hide validation message
+    const validationEl = document.getElementById('polygon-validation');
+    const submitBtn = document.getElementById('submit-btn');
+    if (polygons.length === 0) {
+        validationEl.classList.remove('hidden');
+        submitBtn.disabled = true;
+    } else {
+        validationEl.classList.add('hidden');
+        submitBtn.disabled = false;
+    }
+}
+
+function clearAllPolygons() {
+    if (confirm('¿Estás seguro de que quieres eliminar todos los polígonos?')) {
+        createDrawnItems.clearLayers();
+        updatePolygonsInput();
+        document.getElementById('submit-btn').disabled = true;
+    }
+}
+</script>
+SCRIPTS;
+@endphp
+
+<x-admin.layouts.app :scripts="$scripts">
     <div class="flex items-center justify-between mb-6">
         <div>
             <h1 class="text-2xl font-bold text-gray-900">Nueva GeoZona</h1>
@@ -27,12 +148,24 @@
         
         <div class="mb-6">
             <label class="block text-sm font-medium text-gray-700 mb-2">Polígonos <span class="text-red-500">*</span></label>
-            <p class="text-xs text-gray-500 mb-2">Dibuja al menos un polígono en el mapa. Puedes agregar múltiples polígonos.</p>
+            <div class="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-3">
+                <p class="text-sm text-blue-800 mb-1"><i class="fas fa-info-circle mr-1"></i> Instrucciones:</p>
+                <ul class="text-sm text-blue-700 list-disc list-inside space-y-1">
+                    <li>Haz clic en <strong>"Dibujar un polígono"</strong> en la barra de herramientas del mapa</li>
+                    <li>Haz clic en el mapa para colocar <strong>mínimo 3 puntos</strong></li>
+                    <li>El polígono se <strong>cierra automáticamente</strong> al hacer clic en el primer punto</li>
+                    <li>Puedes <strong>mover</strong> y <strong>eliminar</strong> puntos con la herramienta de edición</li>
+                    <li>Puedes agregar <strong>múltiples polígonos</strong></li>
+                </ul>
+            </div>
             <div id="create-map" class="h-[500px] w-full rounded-lg border border-gray-300 mb-3"></div>
             <div class="bg-gray-50 rounded-lg p-3">
-                <div class="flex items-center justify-between">
-                    <span class="text-sm text-gray-600">Polígonos dibujados: <span id="polygon-count">0</span></span>
+                <div class="flex items-center justify-between flex-wrap gap-2">
+                    <span class="text-sm text-gray-600">Polígonos dibujados: <span id="polygon-count" class="font-medium">0</span></span>
                     <button type="button" onclick="clearAllPolygons()" class="text-sm text-red-600 hover:text-red-800">Limpiar todo</button>
+                </div>
+                <div id="polygon-validation" class="mt-2 text-sm hidden">
+                    <span class="text-red-600"><i class="fas fa-exclamation-triangle mr-1"></i> Se requiere al menos 1 polígono con 3+ puntos</span>
                 </div>
             </div>
             <input type="hidden" name="polygons" id="polygons-input" value="[]">
@@ -51,73 +184,3 @@
         </div>
     </form>
 </x-admin.layouts.app>
-
-@push('scripts')
-<script>
-// Map initialization for create page
-let createMap = null;
-let createDrawnItems = null;
-let createDrawControl = null;
-
-document.addEventListener('DOMContentLoaded', function() {
-    initCreateMap();
-});
-
-function initCreateMap() {
-    createMap = L.map('create-map').setView([-34.6037, -58.3816], 10);
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        attribution: '&copy; OpenStreetMap contributors'
-    }).addTo(createMap);
-    
-    createDrawnItems = new L.FeatureGroup();
-    createMap.addLayer(createDrawnItems);
-    
-    createDrawControl = new L.Control.Draw({
-        edit: { featureGroup: createDrawnItems },
-        draw: {
-            polygon: { allowIntersection: false, showArea: true },
-            polyline: false, circle: false, rectangle: false, marker: false, circlemarker: false
-        }
-    });
-    createMap.addControl(createDrawControl);
-    
-    createMap.on(L.Draw.Event.CREATED, function(e) {
-        const layer = e.layer;
-        createDrawnItems.addLayer(layer);
-        updatePolygonsInput();
-        document.getElementById('submit-btn').disabled = false;
-    });
-    
-    createMap.on(L.Draw.Event.EDITED, function(e) {
-        updatePolygonsInput();
-    });
-    
-    createMap.on(L.Draw.Event.DELETED, function(e) {
-        updatePolygonsInput();
-        if (createDrawnItems.getLayers().length === 0) {
-            document.getElementById('submit-btn').disabled = true;
-        }
-    });
-}
-
-function updatePolygonsInput() {
-    const polygons = [];
-    createDrawnItems.eachLayer(function(layer) {
-        const geojson = layer.toGeoJSON();
-        polygons.push({
-            name: `Polígono ${polygons.length + 1}`,
-            geometry: geojson.geometry,
-            sort_order: polygons.length
-        });
-    });
-    document.getElementById('polygons-input').value = JSON.stringify(polygons);
-    document.getElementById('polygon-count').textContent = polygons.length;
-}
-
-function clearAllPolygons() {
-    createDrawnItems.clearLayers();
-    updatePolygonsInput();
-    document.getElementById('submit-btn').disabled = true;
-}
-</script>
-@endpush

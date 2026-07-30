@@ -104,6 +104,13 @@
                         </a>
                     </div>
                     
+                    <div>
+                        <a href="{{ route('admin.reports.index') }}" class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-gray-600 hover:bg-gray-100 hover:text-gray-900 transition">
+                            <i class="fas fa-flag w-5 text-center"></i>
+                            <span>Reportes</span>
+                        </a>
+                    </div>
+                    
                     <hr class="my-3 border-gray-200">
                     <p class="px-3 text-xs font-semibold text-gray-400 uppercase tracking-wider">Configuración</p>
                     
@@ -250,5 +257,9 @@
     
     {{-- Custom JS --}}
     @vite('resources/js/app.js')
+    {{-- Allow child views to push scripts --}}
+    @if (isset($scripts))
+        {{ $scripts }}
+    @endif
 </body>
 </html>

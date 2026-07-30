@@ -17,7 +17,7 @@
     @else
         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             @foreach ($zones as $zone)
-                <a href="{{ route('admin.geo-zones.show', $zone['id'] ?? $zone['zone']['id'] ?? '') }}" 
+                <a href="{{ route('admin.geo-zones.show', ['zone' => $zone['id'] ?? $zone['zone']['id'] ?? '']) }}" 
                    class="block bg-white rounded-xl shadow-sm border border-gray-200 p-6 hover:shadow-md transition">
                     <h3 class="font-bold text-gray-900 mb-1">{{ $zone['name'] ?? $zone['zone']['name'] ?? '' }}</h3>
                     <p class="text-sm text-gray-600 mb-3">{{ $zone['description'] ?? $zone['zone']['description'] ?? 'Sin descripción' }}</p>
