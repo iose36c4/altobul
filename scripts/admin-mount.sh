@@ -23,20 +23,23 @@ if [ ! -f "$ENV_FILE" ] || [ ! -s "$ENV_FILE" ]; then
     echo "    Created .env from .env.example"
 fi
 
-# Use PostgreSQL via Docker network (connects to backend-postgres-1 container)
+# Use PostgreSQL via Docker network (connects to altobul-postgres container)
 sed -i \
     -e 's|^ADMIN_API_BASE_URL=.*|ADMIN_API_BASE_URL=http://altobul-backend:8000|' \
     -e 's|^DB_CONNECTION=.*|DB_CONNECTION=pgsql|' \
     -e 's|^DB_DATABASE=.*|DB_DATABASE=altobul_admin|' \
+    -e 's|^DB_HOST=.*|DB_HOST=altobul-postgres|' \
     -e 's|^APP_URL=.*|APP_URL=http://localhost:8001|' \
     -e '/^ADMIN_API_KEY=/d' \
     "$ENV_FILE"
 
 # Add PostgreSQL credentials (these don't exist in .env.example, so sed can't replace them)
-for var in "DB_HOST=backend-postgres-1" "DB_PORT=5432" "DB_USERNAME=altobul" "DB_PASSWORD=altobul"; do
+for var in "DB_HOST=altobul-postgres" "DB_PORT=5432" "DB_USERNAME=altobul" "DB_PASSWORD=altobul_secret"; do
     key="${var%%=*}"
     if ! grep -q "^${key}=" "$ENV_FILE"; then
         echo "$var" >> "$ENV_FILE"
+    else
+        sed -i "s|^${key}=.*|${var}|" "$ENV_FILE"
     fi
 done
 

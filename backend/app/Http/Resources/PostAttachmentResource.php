@@ -28,6 +28,7 @@ class PostAttachmentResource extends JsonResource
         return [
             'id' => $this->id,
             'file_url' => $url,
+            'url' => $url,
             'type' => $this->type,
             'created_at' => $this->created_at?->toISOString(),
         ];

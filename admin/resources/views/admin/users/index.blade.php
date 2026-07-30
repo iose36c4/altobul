@@ -3,6 +3,9 @@
         <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
             <h1 class="text-2xl font-bold text-gray-900">Usuarios</h1>
             <div class="flex gap-3">
+                <a href="{{ route('admin.users.create') }}" class="btn-primary flex items-center gap-2">
+                    <i class="fas fa-plus"></i> Crear Usuario
+                </a>
                 <a href="{{ route('admin.users.export') }}" class="bg-gray-100 text-gray-700 py-2 px-4 rounded-lg font-medium hover:bg-gray-200 transition flex items-center gap-2">
                     <i class="fas fa-download"></i> Exportar CSV
                 </a>
@@ -30,6 +33,8 @@
                         <option value="">Todos</option>
                         <option value="active" {{ ($filters['status'] ?? '') === 'active' ? 'selected' : '' }}>Activo</option>
                         <option value="suspended" {{ ($filters['status'] ?? '') === 'suspended' ? 'selected' : '' }}>Suspendido</option>
+                        <option value="banned" {{ ($filters['status'] ?? '') === 'banned' ? 'selected' : '' }}>Baneado</option>
+                        <option value="deleted" {{ ($filters['status'] ?? '') === 'deleted' ? 'selected' : '' }}>Eliminado</option>
                     </select>
                 </div>
                 <div>

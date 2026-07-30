@@ -1,0 +1,120 @@
+ M AGENTS.md
+ M admin/.gitignore
+ M admin/app/Http/Controllers/Admin/InstallController.php
+ M admin/app/Http/Controllers/Admin/UserController.php
+ M admin/app/Http/Requests/Admin/UpdateUserRequest.php
+ M admin/app/Services/BackendApiService.php
+ M admin/bootstrap/app.php
+D  admin/bootstrap/cache/packages.php
+D  admin/bootstrap/cache/services.php
+ M admin/resources/views/admin/users/index.blade.php
+ M admin/resources/views/admin/users/show.blade.php
+ M admin/resources/views/components/admin/layouts/app.blade.php
+ M admin/routes/web.php
+D  admin/storage/framework/cache/data/29/3a/293a1b69024050f31aed8e6ec0fa81163c5a983c
+D  admin/storage/framework/cache/data/81/37/813709512235777d404e22c1ec0e8437d1d85401
+D  admin/storage/framework/sessions/1SAALDKmUYtpjlSBF0ceimX2wVT0daZYMrh5PpD4
+D  admin/storage/framework/sessions/5REpAg9aJY8LDNVTg4N9eqjjld7u0dhdSNAflSkF
+D  admin/storage/framework/sessions/BU5KXSuPRQXetEFslktJUQWNws4SagjfUu1ZNpt7
+D  admin/storage/framework/sessions/FeL1zIluUwzEb9bCGSmzKLSBEnXD5ZoDuBbsvBpC
+D  admin/storage/framework/sessions/IXXGSTYG7OKNEA8BVFxM2TbQxBOyBastTEE3d269
+D  admin/storage/framework/sessions/LUN2kZTcrwnY9MgBk2Zz5hU0cHe3frUHzXSboW1u
+D  admin/storage/framework/sessions/MwjDiQopTsR8p3C6gM6foTQGDBDANbsD0ZKft5xT
+D  admin/storage/framework/sessions/VNOzS5WwFEtOikqub3WfaO5Mg3thE3eDb4KV00ys
+D  admin/storage/framework/sessions/dG2ymRN4Fu1x0vDzZ5E7h2H4D8mmYJiJhbyebWjg
+D  admin/storage/framework/sessions/rTGVjQgrJyigKpFlKUhmgg5EUWhphPyyNGYpp4gn
+D  admin/storage/framework/sessions/zHc1bdfU2OHVs1VAZ4QYyRcnlPECwv9pgW9ECVsV
+D  admin/storage/framework/views/00d687074ab5bc5f2973ec3b778832a0.php
+D  admin/storage/framework/views/09ee47cb6b2ead6fe59c09eda6d900b2.php
+D  admin/storage/framework/views/0cd3f42f50837d1c0987bdb8d9888ff2.php
+D  admin/storage/framework/views/0d91cc84ca3ef31e353ece892735402b.php
+D  admin/storage/framework/views/0f8a86c37564535412953f1e634b99b0.php
+D  admin/storage/framework/views/1242de7afa4c156d3bff905ba6354c63.php
+D  admin/storage/framework/views/136a7c656d1a0ed4e2d0901fc10aa84a.php
+D  admin/storage/framework/views/19f8fb8310d33ae5248a0006179c204c.php
+D  admin/storage/framework/views/1bbc6102c081b21bf9f2f593a9b0e218.php
+D  admin/storage/framework/views/25559de93bb3f75197f65d31431cc854.php
+D  admin/storage/framework/views/25b0d221b0b3a2f9f0f84bf62ea8d4d3.php
+D  admin/storage/framework/views/26328897c1aa10f79e9e2d0d5329b82e.php
+D  admin/storage/framework/views/269b0fee0189e73c1136e66adf27750b.php
+D  admin/storage/framework/views/275c7c02e2528e6029079c885e2d2418.php
+D  admin/storage/framework/views/2cd01824a837fcbad18f4451278dfa3d.php
+D  admin/storage/framework/views/419551074a50fbe34ef86a0e07ca7190.php
+D  admin/storage/framework/views/508f1950e4e8efe8ee069df2bd0b7937.php
+D  admin/storage/framework/views/589bf36cf67001a395eaceb34892e857.php
+D  admin/storage/framework/views/5d354b2893d50f9829507cb5db08ec2b.php
+D  admin/storage/framework/views/6f7d30915538961ccb48e148b50dff1e.php
+D  admin/storage/framework/views/6f8dc7bde97ea89b8aa5e7e3c794d591.php
+D  admin/storage/framework/views/7ab7d5c4b4b95b090d192a15c186d211.php
+D  admin/storage/framework/views/80206a5900f7d9f27081a913e0b15676.php
+D  admin/storage/framework/views/8200d78d1269662c2e1ba8b7bf12d0c9.php
+D  admin/storage/framework/views/8b77322ea40de4645844c2e3622c3810.php
+D  admin/storage/framework/views/8c2da46ec4c83d4f3a4a8806fe1bffb0.php
+D  admin/storage/framework/views/8d82578c6b7f2296eff92bdd034ec3f8.php
+D  admin/storage/framework/views/92b723efff48ff59a4baed38fab1e075.php
+D  admin/storage/framework/views/95e3164b72bdaa6d9137dfc0a56b4aae.php
+D  admin/storage/framework/views/9745f6a6f3fcc1ddd95648c9a006bc71.php
+D  admin/storage/framework/views/a4417ad9f0c5cb1746394af4ad69e3ef.php
+D  admin/storage/framework/views/a7772300e613f5615058c048569c0cb2.php
+D  admin/storage/framework/views/ac4c02a786db2cf28ea74e9136b850c9.php
+D  admin/storage/framework/views/b0160d9ee887b000436a549b742bcf73.php
+D  admin/storage/framework/views/bae129cef9e600352d1c88ca55b5c61c.php
+D  admin/storage/framework/views/bff06be78bce3fed83e9c65b8001e4b4.php
+D  admin/storage/framework/views/c597eabc01b3b531b9dda87258a1b39e.php
+D  admin/storage/framework/views/cacad9aa301188bb671ec61542d90cdf.php
+D  admin/storage/framework/views/cfb3b0d08523933b25d0e9e498df3235.php
+D  admin/storage/framework/views/d1f36e3de69f0a26360ce06ac4b749a6.php
+D  admin/storage/framework/views/d54b4b1eb6bf70ee3b6a52e36ce7e503.php
+D  admin/storage/framework/views/d8023e53ca38edd3353749f456935467.php
+D  admin/storage/framework/views/dac4737a86b0227dc88805e68905fd2f.php
+D  admin/storage/framework/views/dd310000961f2d208873a737c27d849a.php
+D  admin/storage/framework/views/e5f9cadffd0030e6f94a707e4a5cdd0f.php
+D  admin/storage/framework/views/eb7764101f3fea905247e781f95f4596.php
+D  admin/storage/framework/views/ec3b5b322d38ea21fe7f45e15d015fb0.php
+D  admin/storage/framework/views/ed53e6526bfb3c939b903194d34698dc.php
+D  admin/storage/framework/views/ed6d86ec5660851da9f9a0dad3f4f308.php
+D  admin/storage/framework/views/f188496d5460aa7137f13bb1da4b2db1.php
+D  admin/storage/framework/views/f497199d26d29b5bb4d0007bbb834737.php
+D  admin/storage/framework/views/f905b6dee768cbfc0ad33952a263d185.php
+D  admin/storage/framework/views/fd3e6b58625c3b8e8a35ba8fafd7b572.php
+ M backend/app/Events/Broadcast/NewGrant.php
+ M backend/app/Events/Broadcast/NewMatch.php
+ M backend/app/Http/Controllers/Admin/ConfigController.php
+ M backend/app/Http/Controllers/Admin/UserController.php
+ M backend/app/Http/Controllers/AuthController.php
+ M backend/app/Http/Controllers/FriendshipRequestController.php
+ M backend/app/Http/Controllers/PhotoController.php
+ M backend/app/Http/Controllers/ProfileController.php
+ M backend/app/Http/Controllers/UserController.php
+ M backend/app/Http/Middleware/AdminAuthorizationMiddleware.php
+ M backend/app/Http/Middleware/ApiKeyMiddleware.php
+ M backend/app/Http/Resources/BlockResource.php
+ M backend/app/Http/Resources/ConversationResource.php
+ M backend/app/Http/Resources/FriendshipResource.php
+ M backend/app/Http/Resources/PostAttachmentResource.php
+ M backend/app/Http/Resources/PostResource.php
+ M backend/app/Http/Resources/ProfileResource.php
+ M backend/app/Http/Resources/UserMatchResource.php
+ M backend/app/Http/Resources/UserResource.php
+ M backend/app/Models/User.php
+ M backend/app/Services/Discovery/DiscoveryService.php
+ M backend/phpunit.xml.dist
+ M backend/routes/api.php
+ M backend/tests/Feature/ApiKeyMiddlewareTest.php
+ M backend/tests/Feature/SecurityAuditTest.php
+ M backend/tests/Feature/SocialDomainTest.php
+ M backend/tests/Unit/AuthorizationValueObjectsTest.php
+ M docker-compose.yml
+?? .gitignore
+?? .opencode/
+?? admin/app/Http/Controllers/Admin/ReportController.php
+?? admin/resources/views/admin/reports/
+?? admin/resources/views/admin/users/create.blade.php
+?? admin/resources/views/admin/users/edit.blade.php
+?? admin/storage/
+?? backend/app/Http/Controllers/Admin/ContentModerationController.php
+?? backend/app/Http/Controllers/Admin/ReportController.php
+?? backend/app/Http/Controllers/ReportController.php
+?? backend/app/Models/Report.php
+?? backend/database/migrations/2026_07_30_100000_create_reports_table.php
+?? progress.md

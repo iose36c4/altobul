@@ -20,6 +20,8 @@ class ProfileResource extends JsonResource
             'birth_date' => $profile->birth_date?->format('Y-m-d'),
             'profile_visibility' => $profile->profile_visibility,
             'profile_requires_verified' => $profile->profile_requires_verified,
+            'latitude' => $profile->latitude,
+            'longitude' => $profile->longitude,
             'title_visibility' => $profile->title_visibility,
             'title_requires_verified' => $profile->title_requires_verified,
             'description_visibility' => $profile->description_visibility,

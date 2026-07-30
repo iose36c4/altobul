@@ -2,7 +2,9 @@
 
 namespace App\Events\Broadcast;
 
+use App\Models\Photo;
 use App\Models\PhotoAccess;
+use App\Models\Post;
 use App\Models\PostAccess;
 use App\Models\ProfileFieldValue;
 use App\Models\ProfileFieldValueAccess;
@@ -39,14 +41,14 @@ class NewGrant implements ShouldBroadcast
     public function broadcastWith(): array
     {
         $resourceType = match (true) {
-            $this->resource instanceof \App\Models\Photo => 'photo',
-            $this->resource instanceof \App\Models\Post => 'post',
+            $this->resource instanceof Photo => 'photo',
+            $this->resource instanceof Post => 'post',
             default => 'profile_field',
         };
 
         $resourceId = match (true) {
-            $this->resource instanceof \App\Models\Photo => $this->resource->id,
-            $this->resource instanceof \App\Models\Post => $this->resource->id,
+            $this->resource instanceof Photo => $this->resource->id,
+            $this->resource instanceof Post => $this->resource->id,
             default => $this->resource?->id,
         };
 

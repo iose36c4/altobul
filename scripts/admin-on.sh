@@ -29,21 +29,21 @@ docker exec altobul-admin sh -c "
     fi
 "
 
-# Update .env with correct PostgreSQL settings (inside container, connects to backend-postgres-1)
-docker exec altobul-admin sh -c "
+# Update .env with correct PostgreSQL settings (inside container, connects to altobul-postgres)
+docker exec altobul-admin sh -c '
     cd /var/www/html &&
     sed -i \
-        -e 's|^DB_CONNECTION=.*|DB_CONNECTION=pgsql|' \
-        -e 's|^DB_DATABASE=.*|DB_DATABASE=altobul_admin|' \
+        -e "s|^DB_CONNECTION=.*|DB_CONNECTION=pgsql|" \
+        -e "s|^DB_DATABASE=.*|DB_DATABASE=altobul_admin|" \
         .env
     # Add PostgreSQL credentials (these may not exist in .env.example)
-    for var in 'DB_HOST=backend-postgres-1' 'DB_PORT=5432' 'DB_USERNAME=altobul' 'DB_PASSWORD=altobul'; do
-        key=\"\${var%%=*}\"
-        if ! grep -q \"^\${key}=\" .env; then
-            echo \"\$var\" >> .env
+    for var in "DB_HOST=altobul-postgres" "DB_PORT=5432" "DB_USERNAME=altobul" "DB_PASSWORD=altobul_secret"; do
+        key="${var%%=*}"
+        if ! grep -q "^${key}=" .env; then
+            echo "$var" >> .env
         fi
     done
-"
+'
 
 echo "==> Generating APP_KEY if needed..."
 docker exec altobul-admin php artisan key:generate --force

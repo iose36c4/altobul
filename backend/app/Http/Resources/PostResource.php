@@ -13,6 +13,7 @@ class PostResource extends JsonResource
             'id' => $this->id,
             'user' => new UserResource($this->whenLoaded('user')),
             'content' => $this->content_md,
+            'content_md' => $this->content_md,
             'visibility' => $this->visibility,
             'requires_verified' => $this->requires_verified,
             'expires_at' => $this->expires_at?->toISOString(),

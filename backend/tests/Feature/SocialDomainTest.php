@@ -11,6 +11,7 @@ use App\Models\UserMatch;
 use App\Services\ApiKeyService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
 use Illuminate\Testing\TestResponse;
 use Tests\TestCase;
@@ -30,7 +31,7 @@ class SocialDomainTest extends TestCase
         DB::table('users')->insert([
             'id' => $adminId,
             'email' => 'geo-admin@example.com',
-            'password_hash' => bcrypt('password'),
+            'password_hash' => Hash::make('password'),
             'email_verified_at' => now(),
             'verification_status' => 'not_verified',
             'status' => 'active',
@@ -67,7 +68,7 @@ class SocialDomainTest extends TestCase
         DB::table('users')->insert([
             'id' => $userId,
             'email' => $attributes['email'] ?? 'user-'.Str::uuid().'@example.com',
-            'password_hash' => bcrypt('password'),
+            'password_hash' => Hash::make('password'),
             'email_verified_at' => now(),
             'verification_status' => 'not_verified',
             'status' => 'active',

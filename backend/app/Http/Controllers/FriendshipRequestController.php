@@ -7,6 +7,7 @@ use App\Http\Resources\FriendshipRequestResource;
 use App\Http\Resources\FriendshipResource;
 use App\Models\Friendship;
 use App\Models\FriendshipRequest;
+use App\Models\User;
 use App\Services\Authorization\AuthorizationService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -37,6 +38,30 @@ class FriendshipRequestController extends Controller
             'sent' => FriendshipRequestResource::collection($sent)->response()->getData(true),
             'received' => FriendshipRequestResource::collection($received)->response()->getData(true),
         ]);
+    }
+
+    public function store(Request $request): JsonResponse
+    {
+        $user = $request->user();
+
+        $data = $request->validate([
+            'addressee_id' => ['required', 'uuid', 'exists:users,id'],
+        ]);
+
+        $addressee = User::findOrFail($data['addressee_id']);
+
+        $this->authz->canRequestFriendship($user, $addressee)->throwIfDenied();
+
+        $friendshipRequest = FriendshipRequest::create([
+            'requester_id' => $user->id,
+            'addressee_id' => $addressee->id,
+            'status' => 'PENDING',
+            'expires_at' => now()->addDays(7),
+        ]);
+
+        return response()->json([
+            'friendship_request' => new FriendshipRequestResource($friendshipRequest->load(['requester.profile', 'addressee.profile'])),
+        ], 201);
     }
 
     public function accept(FriendshipRequest $friendshipRequest): JsonResponse
@@ -72,31 +97,6 @@ class FriendshipRequestController extends Controller
 
         return response()->json([
             'friendship' => new FriendshipResource($friendship->load(['userA.profile', 'userB.profile'])),
-            'friendship_request' => new FriendshipRequestResource($friendshipRequest->fresh()),
-        ]);
-    }
-
-    public function reject(FriendshipRequest $friendshipRequest): JsonResponse
-    {
-        $user = request()->user();
-
-        if ($friendshipRequest->addressee_id !== $user->id) {
-            return response()->json([
-                'error' => 'Forbidden',
-                'message' => 'You are not the addressee of this request',
-            ], 403);
-        }
-
-        if ($friendshipRequest->status !== 'PENDING') {
-            return response()->json([
-                'error' => 'Invalid state',
-                'message' => 'This request is no longer pending',
-            ], 422);
-        }
-
-        $friendshipRequest->update(['status' => 'REJECTED']);
-
-        return response()->json([
             'friendship_request' => new FriendshipRequestResource($friendshipRequest->fresh()),
         ]);
     }

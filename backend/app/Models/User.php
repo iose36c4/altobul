@@ -108,6 +108,16 @@ class User extends Authenticatable
         return $this->hasMany(VerificationRequest::class, 'user_id', 'id');
     }
 
+    public function friendshipRequestsSent()
+    {
+        return $this->hasMany(FriendshipRequest::class, 'requester_id', 'id');
+    }
+
+    public function friendshipRequestsReceived()
+    {
+        return $this->hasMany(FriendshipRequest::class, 'addressee_id', 'id');
+    }
+
     public function discoveryPreferences()
     {
         return $this->hasMany(DiscoveryPreference::class, 'user_id', 'id');

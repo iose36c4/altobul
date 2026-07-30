@@ -83,11 +83,6 @@ class AuthorizationValueObjectsTest extends TestCase
 
     public function test_relationship_status_can_chat_method(): void
     {
-        // Skip this test for now due to PHP 8 match keyword issue
-        $this->markTestSkipped('PHP 8 match keyword conflict');
-
-        return;
-
         $none = RelationshipStatus::none();
         $this->assertFalse($none->canChat());
 

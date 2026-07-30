@@ -23,3 +23,5 @@ database/*.sqlite-journal
 *.swo
 .DS_Store
 Thumbs.db
+/supervisord.pid
+/bootstrap/cache/*.php

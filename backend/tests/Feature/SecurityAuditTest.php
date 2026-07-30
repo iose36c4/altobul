@@ -24,7 +24,7 @@ class SecurityAuditTest extends TestCase
         DB::table('users')->insert([
             'id' => $userId,
             'email' => $attributes['email'] ?? 'user-'.Str::uuid().'@example.com',
-            'password_hash' => bcrypt($attributes['password'] ?? 'password'),
+            'password_hash' => Hash::make($attributes['password'] ?? 'password'),
             'email_verified_at' => $attributes['email_verified_at'] ?? now(),
             'verification_status' => $attributes['verification_status'] ?? 'not_verified',
             'status' => $attributes['status'] ?? 'active',

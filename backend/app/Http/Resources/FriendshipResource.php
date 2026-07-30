@@ -10,6 +10,8 @@ class FriendshipResource extends JsonResource
     {
         return [
             'id' => $this->id,
+            'user_a_id' => $this->user_a_id,
+            'user_b_id' => $this->user_b_id,
             'user_a' => new UserResource($this->whenLoaded('userA')),
             'user_b' => new UserResource($this->whenLoaded('userB')),
             'status' => $this->status,

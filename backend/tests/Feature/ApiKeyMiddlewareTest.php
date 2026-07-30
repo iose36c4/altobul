@@ -7,6 +7,7 @@ use App\Models\User;
 use App\Services\ApiKeyService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
 use Tests\TestCase;
 
@@ -21,7 +22,7 @@ class ApiKeyMiddlewareTest extends TestCase
         DB::table('users')->insert([
             'id' => $userId,
             'email' => $attributes['email'] ?? 'admin-'.Str::uuid().'@example.com',
-            'password_hash' => bcrypt('password'),
+            'password_hash' => Hash::make('password'),
             'email_verified_at' => now(),
             'verification_status' => 'not_verified',
             'status' => 'active',
@@ -40,7 +41,7 @@ class ApiKeyMiddlewareTest extends TestCase
         DB::table('users')->insert([
             'id' => $userId,
             'email' => $attributes['email'] ?? 'user-'.Str::uuid().'@example.com',
-            'password_hash' => bcrypt('password'),
+            'password_hash' => Hash::make('password'),
             'email_verified_at' => now(),
             'verification_status' => 'not_verified',
             'status' => 'active',
@@ -160,7 +161,7 @@ class ApiKeyMiddlewareTest extends TestCase
         ApiKey::create([
             'name' => 'Expired Key',
             'type' => 'CLIENT',
-            'key_hash' => bcrypt($rawKey),
+            'key_hash' => Hash::make($rawKey),
             'key_prefix' => $prefix,
             'expires_at' => now()->subDay(),
             'created_by' => $admin->id,

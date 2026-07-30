@@ -29,7 +29,7 @@ class InstallController
         }
 
         // Build install URL using current request's host/port
-        return redirect($request->getSchemeAndHttpHost() . '/install');
+        return redirect($request->getSchemeAndHttpHost().'/install');
     }
 
     public function testConnection(Request $request): JsonResponse

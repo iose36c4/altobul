@@ -10,6 +10,9 @@ class BlockResource extends JsonResource
     {
         return [
             'id' => $this->id,
+            'blocker_id' => $this->blocker_id,
+            'blocked_id' => $this->blocked_id,
+            'blocker' => new UserResource($this->whenLoaded('blocker')),
             'blocked' => new UserResource($this->whenLoaded('blocked')),
             'created_at' => $this->created_at?->toISOString(),
         ];

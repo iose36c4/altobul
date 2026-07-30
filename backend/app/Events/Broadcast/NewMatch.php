@@ -4,7 +4,6 @@ namespace App\Events\Broadcast;
 
 use App\Models\User;
 use App\Models\UserMatch;
-use Illuminate\Broadcasting\Channel;
 use Illuminate\Broadcasting\InteractsWithSockets;
 use Illuminate\Broadcasting\PrivateChannel;
 use Illuminate\Contracts\Broadcasting\ShouldBroadcast;

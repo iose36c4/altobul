@@ -18,8 +18,11 @@ return Application::configure(basePath: dirname(__DIR__))
             InjectAdminApiToken::class,
             SecurityHeadersMiddleware::class,
         ]);
-        $middleware->replace(VerifyCsrfToken::class, \App\Http\Middleware\VerifyCsrfToken::class);
+        $middleware->replace(VerifyCsrfToken::class, VerifyCsrfToken::class);
     })
     ->withExceptions(function (Exceptions $exceptions) {
         //
-    })->create();
+    })
+    ->withProviders([
+        App\Providers\ViewServiceProvider::class,
+    ])->create();

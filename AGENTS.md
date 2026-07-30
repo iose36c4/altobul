@@ -1,16 +1,17 @@
 # Altobul - Agent Instructions
 
 ## Project Status
-**Active Development** - Backend implemented with Laravel 12, PHP 8.3. Database schema complete with migrations. Tests passing.
+**Active Development** - Backend (Laravel 13, PHP 8.3) + Admin Panel (Laravel 12, PHP 8.3) implemented. Database schema complete with migrations. Tests passing.
 
 ## Tech Stack
-- **Frontend**: Next.js, React, TypeScript, Tailwind CSS (planned)
-- **Backend**: Laravel 12, PHP 8.3, API, WebSockets (Laravel Reverb)
-- **Database**: PostgreSQL + PostGIS (geospatial)
+- **Frontend**: Next.js, React, TypeScript, Tailwind CSS (planned - not yet implemented)
+- **Backend**: Laravel 13, PHP 8.3, API, WebSockets (Laravel Reverb)
+- **Admin Panel**: Laravel 12, PHP 8.3, Blade, Livewire (separate app in `/admin`)
+- **Database**: PostgreSQL + PostGIS (geospatial) - backend; SQLite - admin panel
 - **Cache/Queue**: Redis
 - **Storage**: S3-compatible object storage
-- **Maps**: Interactive admin map with PostGIS polygons
-- **Static Analysis**: PHPStan Level 5 (Larastan)
+- **Maps**: Interactive admin map with PostGIS polygons (Leaflet + Leaflet.draw)
+- **Static Analysis**: PHPStan Level 5 (Larastan) - backend only
 - **Code Style**: Laravel Pint (PSR-12)
 
 ## Key Domain Concepts
@@ -39,6 +40,20 @@ php artisan migrate --force
 php artisan test
 php vendor/bin/pint --test
 composer analyse
+```
+
+### Admin Panel
+```bash
+cd admin
+composer install
+cp .env.example .env
+php artisan key:generate
+touch database/database.sqlite
+php artisan migrate --force
+npm install
+npm run build
+php artisan test
+php vendor/bin/pint --test
 ```
 
 ### Database
@@ -104,7 +119,8 @@ php artisan reverb:start --debug
 - Tests in `tests/Feature` and `tests/Unit`
 - Uses `RefreshDatabase` trait
 - Factory pattern with `Str::uuid()` for IDs
-- PostgreSQL in-memory for testing (configured in phpunit.xml)
+- Backend: PostgreSQL in CI (configured in phpunit.xml.dist, port 5433)
+- Admin: SQLite in-memory (configured in phpunit.xml)
 
 ## Key Files
 
@@ -157,9 +173,34 @@ php artisan reverb:start --debug
 - Config: `config/reverb.php`
 - Broadcasting: `config/broadcasting.php`
 
+## Admin Panel Key Files
+
+### Admin Auth & Middleware
+- Middleware: `app/Http/Middleware/AdminWebGuardMiddleware.php`
+- Middleware: `app/Http/Middleware/InjectAdminApiToken.php`
+- Controller: `app/Http/Controllers/Auth/AdminAuthController.php`
+
+### Admin Controllers
+- Dashboard: `app/Http/Controllers/Admin/DashboardController.php`
+- Geo Zones: `app/Http/Controllers/Admin/GeoZoneController.php`
+- Profile Fields: `app/Http/Controllers/Admin/ProfileFieldController.php`
+- API Keys: `app/Http/Controllers/Admin/ApiKeyController.php`
+- Users: `app/Http/Controllers/Admin/UserController.php`
+- Verifications: `app/Http/Controllers/Admin/VerificationController.php`
+- Config: `app/Http/Controllers/Admin/ConfigController.php`
+- Audit Logs: `app/Http/Controllers/Admin/AuditLogController.php`
+- Installer: `app/Http/Controllers/Admin/InstallController.php`
+
+### Admin Services
+- Backend API: `app/Services/BackendApiService.php`
+
+### Admin Models
+- User: `app/Models/User.php`
+
 ## CI/CD
-- GitHub Actions: `.github/workflows/ci.yml`
+- GitHub Actions: `.github/workflows/ci.yml` (backend only)
 - Runs tests, lint, and static analysis on push/PR
+- Uses PostgreSQL + PostGIS + Redis services in CI
 
 ## Important Patterns
 1. **API Key ≠ User**: API Key identifies application (Client/Admin), User Token identifies person

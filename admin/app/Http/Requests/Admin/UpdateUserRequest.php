@@ -15,8 +15,9 @@ class UpdateUserRequest extends FormRequest
     {
         return [
             'email' => ['sometimes', 'email', 'max:255'],
+            'password' => ['sometimes', 'string', 'min:8'],
             'role' => ['sometimes', 'string', 'in:user,admin'],
-            'status' => ['sometimes', 'string', 'in:active,suspended'],
+            'status' => ['sometimes', 'string', 'in:active,suspended,banned'],
         ];
     }
 }

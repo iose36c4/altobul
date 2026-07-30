@@ -100,6 +100,20 @@ class BackendApiService
         return $response->ok() ? $response->json() : ['error' => $response->json('message')];
     }
 
+    public function createUser(array $data): array
+    {
+        $response = $this->post('/users', $data);
+
+        return $response->ok() ? $response->json() : ['error' => $response->json('message')];
+    }
+
+    public function updateUser(string $id, array $data): array
+    {
+        $response = $this->put("/users/{$id}", $data);
+
+        return $response->ok() ? $response->json() : ['error' => $response->json('message')];
+    }
+
     public function suspendUser(string $id): array
     {
         $response = $this->post("/users/{$id}/suspend");
@@ -114,9 +128,123 @@ class BackendApiService
         return $response->ok() ? $response->json() : ['error' => $response->json('message')];
     }
 
+    public function banUser(string $id): array
+    {
+        $response = $this->post("/users/{$id}/ban");
+
+        return $response->ok() ? $response->json() : ['error' => $response->json('message')];
+    }
+
+    public function deleteUser(string $id): array
+    {
+        $response = $this->delete("/users/{$id}");
+
+        return $response->ok() ? $response->json() : ['error' => $response->json('message')];
+    }
+
     public function changeUserRole(string $id, string $role): array
     {
         $response = $this->post("/users/{$id}/change-role", ['role' => $role]);
+
+        return $response->ok() ? $response->json() : ['error' => $response->json('message')];
+    }
+
+    // === Content Moderation ===
+
+    public function getUserPosts(string $userId): array
+    {
+        $response = $this->get("/moderation/users/{$userId}/posts");
+
+        return $response->ok() ? $response->json() : ['error' => $response->json('message')];
+    }
+
+    public function deletePost(string $postId): array
+    {
+        $response = $this->delete("/moderation/posts/{$postId}");
+
+        return $response->ok() ? $response->json() : ['error' => $response->json('message')];
+    }
+
+    public function getUserPhotos(string $userId): array
+    {
+        $response = $this->get("/moderation/users/{$userId}/photos");
+
+        return $response->ok() ? $response->json() : ['error' => $response->json('message')];
+    }
+
+    public function deletePhoto(string $photoId): array
+    {
+        $response = $this->delete("/moderation/photos/{$photoId}");
+
+        return $response->ok() ? $response->json() : ['error' => $response->json('message')];
+    }
+
+    public function getUserTokes(string $userId): array
+    {
+        $response = $this->get("/moderation/users/{$userId}/tokes");
+
+        return $response->ok() ? $response->json() : ['error' => $response->json('message')];
+    }
+
+    public function deleteToke(string $tokeId): array
+    {
+        $response = $this->delete("/moderation/tokes/{$tokeId}");
+
+        return $response->ok() ? $response->json() : ['error' => $response->json('message')];
+    }
+
+    public function getUserMatches(string $userId): array
+    {
+        $response = $this->get("/moderation/users/{$userId}/matches");
+
+        return $response->ok() ? $response->json() : ['error' => $response->json('message')];
+    }
+
+    public function deleteMatch(string $matchId): array
+    {
+        $response = $this->delete("/moderation/matches/{$matchId}");
+
+        return $response->ok() ? $response->json() : ['error' => $response->json('message')];
+    }
+
+    public function getUserFriendships(string $userId): array
+    {
+        $response = $this->get("/moderation/users/{$userId}/friendships");
+
+        return $response->ok() ? $response->json() : ['error' => $response->json('message')];
+    }
+
+    public function deleteFriendship(string $friendshipId): array
+    {
+        $response = $this->delete("/moderation/friendships/{$friendshipId}");
+
+        return $response->ok() ? $response->json() : ['error' => $response->json('message')];
+    }
+
+    public function getUserConversations(string $userId): array
+    {
+        $response = $this->get("/moderation/users/{$userId}/conversations");
+
+        return $response->ok() ? $response->json() : ['error' => $response->json('message')];
+    }
+
+    public function getConversationMessages(string $conversationId): array
+    {
+        $response = $this->get("/moderation/conversations/{$conversationId}/messages");
+
+        return $response->ok() ? $response->json() : ['error' => $response->json('message')];
+    }
+
+    public function deleteConversation(string $conversationId): array
+    {
+        $response = $this->delete("/moderation/conversations/{$conversationId}");
+
+        return $response->ok() ? $response->json() : ['error' => $response->json('message')];
+    }
+
+    public function deleteMessage(string $messageId): array
+    {
+        $response = $this->delete("/moderation/messages/{$messageId}");
 
         return $response->ok() ? $response->json() : ['error' => $response->json('message')];
     }
@@ -283,6 +411,35 @@ class BackendApiService
     public function revokeApiKey(string $id): array
     {
         $response = $this->delete("/api-keys/{$id}");
+
+        return $response->ok() ? $response->json() : ['error' => $response->json('message')];
+    }
+
+    // === Reports ===
+    public function getReports(array $filters = []): array
+    {
+        $response = $this->get('/reports', $filters);
+
+        return $response->ok() ? $response->json() : ['error' => $response->json('message')];
+    }
+
+    public function getReport(string $id): array
+    {
+        $response = $this->get("/reports/{$id}");
+
+        return $response->ok() ? $response->json() : ['error' => $response->json('message')];
+    }
+
+    public function dismissReport(string $id, ?string $notes = null): array
+    {
+        $response = $this->post("/reports/{$id}/dismiss", array_filter(['admin_notes' => $notes]));
+
+        return $response->ok() ? $response->json() : ['error' => $response->json('message')];
+    }
+
+    public function actionReport(string $id, ?string $notes = null): array
+    {
+        $response = $this->post("/reports/{$id}/action", array_filter(['admin_notes' => $notes]));
 
         return $response->ok() ? $response->json() : ['error' => $response->json('message')];
     }

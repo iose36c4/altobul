@@ -9,7 +9,6 @@ use App\Http\Resources\ProfileFieldDefinitionResource;
 use App\Http\Resources\ProfileFieldValueResource;
 use App\Http\Resources\ProfileResource;
 use App\Models\ProfileFieldDefinition;
-use App\Models\User;
 use App\Services\Profile\ProfileFieldService;
 use App\Services\Profile\ProfileService;
 use Illuminate\Http\JsonResponse;

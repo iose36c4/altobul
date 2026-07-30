@@ -3,7 +3,6 @@
 namespace App\Services\Discovery;
 
 use App\Domain\Authorization\VisibilityLevel;
-use App\Models\Profile;
 use App\Models\ProfileFieldDefinition;
 use App\Models\User;
 use App\Services\Authorization\AuthorizationService;

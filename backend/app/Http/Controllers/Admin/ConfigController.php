@@ -15,7 +15,7 @@ class ConfigController extends Controller
         protected AuditLogService $auditLog
     ) {}
 
-    public function show(): JsonResponse
+    public function index(): JsonResponse
     {
         $configs = AppConfig::all()->keyBy('key')->map(fn ($c) => $c->value);
 

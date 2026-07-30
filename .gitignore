@@ -1,0 +1,10 @@
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+*.bak
+*.idea
+.vscode/
+.phpunit.result.cache
+supervisord.pid
+*.log

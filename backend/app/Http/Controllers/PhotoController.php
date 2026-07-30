@@ -10,7 +10,6 @@ use App\Services\Authorization\AuthorizationService;
 use App\Services\Photo\PhotoService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Validation\ValidationException;
 
 class PhotoController extends Controller
 {
@@ -43,15 +42,11 @@ class PhotoController extends Controller
     {
         $user = $request->user();
 
-        try {
-            $data = $request->validate([
-                'photo' => ['required', 'file', 'max:10240', 'mimes:jpeg,png,webp'],
-                'visibility' => ['required', 'string', 'in:PUBLIC,MATCH,FRIENDS,PRIVATE'],
-                'requires_verified' => ['nullable', 'boolean'],
-            ]);
-        } catch (ValidationException $e) {
-            throw $e;
-        }
+        $data = $request->validate([
+            'photo' => ['required', 'file', 'max:10240', 'mimes:jpeg,png,webp'],
+            'visibility' => ['required', 'string', 'in:PUBLIC,MATCH,FRIENDS,PRIVATE'],
+            'requires_verified' => ['nullable', 'boolean'],
+        ]);
 
         try {
             $photo = $this->photoService->upload(
